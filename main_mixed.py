@@ -94,26 +94,27 @@ def run( args):
 
                         train_loss, train_acc = measures.test(model, train_loader, args.device)
                         save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                        dynamics.append(save_dict)
 
-                        if args.checkpoints:
-                            output = {
-                                'model': copy.deepcopy(model.state_dict()),
-                                'state': dynamics[-1],
-                                'step': step
-                            }
-                            with open(args.outname+f'_t{step}', "wb") as handle:
-                                pickle.dump(output, handle)
-                        else:
-                            output = {
-                                'init': model0.state_dict(),
-                                'best': best,
-                                'model': copy.deepcopy(model.state_dict()),
-                                'dynamics': dynamics,
-                                'step': step
-                            }
-                            with open(args.outname, "wb") as handle:
-                                pickle.dump(args, handle)
-                                pickle.dump(output, handle)
+                        #if args.checkpoints:
+                         #   output = {
+                          #      'model': copy.deepcopy(model.state_dict()),
+                           #     'state': dynamics[-1],
+                            #    'step': step
+                            #}
+                            #with open(args.outname+f'_t{step}', "wb") as handle:
+                             #   pickle.dump(output, handle)
+                        #else:
+                         #   output = {
+                          #      'init': model0.state_dict(),
+                           #     'best': best,
+                            #    'model': copy.deepcopy(model.state_dict()),
+                             #   'dynamics': dynamics,
+                              #  'step': step
+                            #}
+                            #with open(args.outname, "wb") as handle:
+                             #   pickle.dump(args, handle)
+                              #  pickle.dump(output, handle)
                         save_ckpt = next(save_ckpts)
 
 
@@ -123,27 +124,31 @@ def run( args):
             save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
             dynamics.append(save_dict)
 
-            if args.checkpoints:
-                output = {
-                    'model': copy.deepcopy(model.state_dict()),
-                    'state': dynamics[-1],
-                    'step': step
-                }
-                with open(args.outname+f'_t{step}', "wb") as handle:
-                    pickle.dump(output, handle)
-            else:
-                output = {
-                    'init': model0.state_dict(),
-                    'best': best,
-                    'model': copy.deepcopy(model.state_dict()),
-                    'dynamics': dynamics,
-                    'step': step
-                }
-                with open(args.outname, "wb") as handle:
-                    pickle.dump(args, handle)
-                    pickle.dump(output, handle)
+            #if args.checkpoints:
+             #   output = {
+              #      'model': copy.deepcopy(model.state_dict()),
+               #     'state': dynamics[-1],
+                #    'step': step
+                #}
+                #with open(args.outname+f'_t{step}', "wb") as handle:
+                 #   pickle.dump(output, handle)
+            #else:
+             #   output = {
+              #      'init': model0.state_dict(),
+               #     'best': best,
+                #    'model': copy.deepcopy(model.state_dict()),
+                 #   'dynamics': dynamics,
+                  #  'step': step
+                #}
+                #with open(args.outname, "wb") as handle:
+                 #   pickle.dump(args, handle)
+                  #  pickle.dump(output, handle)
             break
+    filename = 'dynamics.pkl'
 
+# Write the list to a pickle file   
+    with open(filename, 'wb') as file:
+        pickle.dump(dynamics, file)        
     return None
 
 torch.set_default_dtype(torch.float32)
