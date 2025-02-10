@@ -9,9 +9,150 @@ import random
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
+from collections import defaultdict
 
 from .utils import dec2bin, dec2base, base2dec
 
+
+def index_to_choice(index):
+    n, m2, m3 = 16, 4, 64  # Number of choices per stage
+
+    index -= 1  # Convert to 0-based index
+
+    x1 = index // (m2 * m3 * m2) + 1
+    index = index % (m2 * m3 * m2)
+
+    x2 = index // (m3 * m2) + 1
+    index = index % (m3 * m2)
+
+    x3 = index // m2 + 1
+    x4 = index % m2 + 1
+
+    return [x1, x2, x3, x4]
+
+
+def sample_data_from_indices_fixed_tree(samples, rules, rule_types):
+    L=len(rules)
+    all_features = []
+    labels=[]
+    samples=samples+1
+    for sample in samples:
+        chosen_rules=index_to_choice(sample)
+        labels.append(chosen_rules[0]-1)
+        #print(chosen_rules[0])
+        chosen_rules=[x-1 for x in chosen_rules]        
+    #for label in labels:
+    # Initialize the current symbols with the start symbol
+        current_symbols = [chosen_rules[0]]
+        
+        # Sequentially apply rules for each layer
+        k=0
+        k_2=1
+        for layer in range(0, L):  # 1 to 3 (3 layers)
+            new_symbols = []
+            for symbol in current_symbols:
+                rule_type = rule_types[k]
+                k=k+1
+                #print(rule_type)
+                rule_tensor = rules[layer][rule_type]
+                #chosen_rule=torch.randint(low=0,high=rule_tensor.shape[1],size=(1,)).item()
+                chosen_rule=chosen_rules[k_2]
+                k_2=k_2+1
+                new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+            #print(new_symbols)
+            #new_symbols=new_symbols[0]
+            #print(new_symbols)
+            if new_symbols != []:
+                current_symbols = new_symbols
+            features=torch.tensor(new_symbols)
+        all_features.append(features)
+    concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
+    labels=torch.tensor(labels)
+    return concatenated_features,labels
+
+def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L,seed):
+    random.seed(seed)
+
+    # Define a callable for the inner defaultdict to return empty tensors
+    def tensor_default():
+        return torch.empty(0)
+
+    tuples_2 = list(product(*[range(v) for _ in range(s_2)]))
+    tuples_3 = list(product(*[range(v) for _ in range(s_3)]))
+
+    # Define the nested defaultdict structure
+    rules = defaultdict(lambda: defaultdict(tensor_default))
+
+    # Initialize the grammar with sampled tensors
+    rules[0][0] = torch.tensor(random.sample(tuples_2, n * m_2)).reshape(n, m_2, s_2)
+    rules[0][1] = torch.tensor(random.sample(tuples_3, n * m_3)).reshape(n, m_3, s_3)
+    for i in range(1, L):
+        rules[i][0] = torch.tensor(random.sample(tuples_2, v * m_2)).reshape(
+            v, m_2, s_2
+        )
+        rules[i][1] = torch.tensor(random.sample(tuples_3, v * m_3)).reshape(
+            v, m_3, s_3
+        )
+
+    return rules
+
+
+def sample_data_from_labels_fixed_tree(labels, rules,rule_types):
+    L=len(rules)
+    all_features = []
+    for label in labels:
+    # Initialize the current symbols with the start symbol
+        current_symbols = [label]
+        # Sequentially apply rules for each layer
+        k=0
+        for layer in range(0, L):  # 1 to 3 (3 layers)
+            new_symbols = []
+            for symbol in current_symbols:
+                rule_type = rule_types[k]
+                k=k+1
+                #print(rule_type)
+                rule_tensor = rules[layer][rule_type]
+                chosen_rule=torch.randint(low=0,high=rule_tensor.shape[1],size=(1,)).item()
+                new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+            #print(new_symbols)
+            #new_symbols=new_symbols[0]
+            #print(new_symbols)
+            if new_symbols != []:
+                current_symbols = new_symbols
+            features=torch.tensor(new_symbols)
+        all_features.append(features)
+    concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
+    return concatenated_features,labels
+
+
+
+def reconstruct_tree_structure(rule_types,n,m_2,m_3, L):
+    tree_structure = []
+    current_level = [rule_types[0]]  # Start with the root node
+    index = 1
+
+    for level in range(1, L + 1):
+        next_level = []
+        for node in current_level:
+            branching_factor = 3 if node == 1 else 2
+            next_level.extend(rule_types[index:index + branching_factor])
+            index += branching_factor
+        tree_structure.append(current_level)
+        current_level = next_level
+    last_rules=tree_structure[-1]
+    total_sum = sum(3 if x == 1 else 2 for x in last_rules)
+    input_size=total_sum
+    factor = n
+
+# Iterate through the nested list and update the factor
+    for level in tree_structure:
+        for value in level:
+            if value == 1:
+                factor *= m_3
+            elif value == 0:
+                factor *= m_2
+    num_data=factor
+    return tree_structure,input_size,num_data
 
 def sample_rules( v, n, m, s, L, seed=42):
         """
@@ -68,7 +209,7 @@ def sample_data_from_labels( labels, rules, probability):
 
 def sample_data_from_labels_unif( labels, rules):
     """
-    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen uniformly at random for each level.
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen Chetuormly at random for each level.
 
     Args:
         lables: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
@@ -174,6 +315,116 @@ def sample_data_from_indices(samples, rules, v, n, m, s, L, bonus):
 
     return features, labels
 
+
+class MixedRandomHierarchyModel(Dataset):
+    """
+    Implement the Random Hierarchy Model (RHM) as a PyTorch dataset.
+    """
+
+    def __init__(
+            self,
+            num_features=8,     # vocabulary size
+            num_classes=2,      # number of classes
+            fraction_rules=0.5,     # number of synonymic low-level representations (multiplicity)
+            rule_sequence_type=1,
+            s_2=2,
+            s_3=3,       # size of the low-level representations
+            num_layers=2,       # number of levels in the hierarchy
+            seed_rules=0,
+            seed_sample=1,
+            train_size=-1,
+            test_size=0,
+            input_format='onehot',
+            replacement=False,
+            whitening=0,
+            transform=None    ):
+
+        v=num_features
+        f=fraction_rules
+        m_2 = int(f * v)
+        m_3 = int(f * v**2)
+        self.num_features = num_features
+        self.m_2 = m_2
+        self.m_3 = m_3
+        self.num_layers = num_layers
+        self.num_classes = num_classes
+        self.s_2 = s_2
+        self.s_3 = s_3
+        self.fraction_rules = fraction_rules
+        self.rule_sequence_type = rule_sequence_type
+
+        self.rules = sample_mixed_rules(num_features,num_classes,m_2,m_3,s_2,s_3,num_layers,seed_rules)
+        max_rule_types = int(np.floor((3**num_layers-1)/2))
+
+        if rule_sequence_type == 1:
+            rule_types=[i % 2 for i in range(max_rule_types)]
+        elif rule_sequence_type == 2:
+            rule_types=[(i+1) % 2 for i in range(max_rule_types)]
+
+        tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
+        
+        if not replacement:
+            if train_size == -1:
+                samples = torch.arange( max_data)
+
+            else:
+                test_size = min( test_size, max_data-train_size)
+                random.seed(seed_sample)
+                samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
+
+            self.features, self.labels = sample_data_from_indices_fixed_tree(
+                samples, self.rules,rule_types
+            )
+
+        else:
+            torch.manual_seed(seed_sample)
+            if train_size == -1:
+                labels = torch.randint(low=0, high=num_classes, size=(max_data + test_size,))
+            else:
+                labels = torch.randint(low=0, high=num_classes, size=(train_size + test_size,))
+            self.features, self.labels = sample_data_from_labels_fixed_tree(labels, self.rules,rule_types)
+
+
+        if 'onehot' not in input_format:
+            assert not whitening, "Whitening only implemented for one-hot encoding"
+
+        if 'onehot' in input_format:
+
+            self.features = F.one_hot(
+                self.features.long(),
+                num_classes=num_features).float()
+
+            if whitening:
+
+                inv_sqrt_norm = (1.-1./num_features) ** -.5
+                self.features = (self.features - 1./num_features) * inv_sqrt_norm
+            self.features = self.features.permute(0, 2, 1)
+
+        elif 'long' in input_format:
+            self.features = self.features.long() + 1
+
+        else:
+            raise ValueError
+
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        """
+        Args:
+        	idx: sample index
+
+        Returns:
+            Feature-label pairs at index            
+        """
+        x, y = self.features[idx], self.labels[idx]
+
+        if self.transform:
+            x, y = self.transform(x, y)
+
+        return x, y
 
 class RandomHierarchyModel(Dataset):
     """
