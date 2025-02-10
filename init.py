@@ -29,6 +29,77 @@ class CosineWarmupLR(optim.lr_scheduler._LRScheduler):
         return lr_factor
 
 
+def init_data_mixed(args):
+    """
+    Initialise dataset.
+    
+    Returns:
+        Two dataloaders for train and test set.
+    """
+    if args.dataset=='mixed_rhm':
+        
+
+        dataset=datasets.MixedRandomHierarchyModel(
+            num_features=args.num_features,     # vocabulary size
+            num_classes=args.num_classes,      # number of classes
+            fraction_rules=args.fraction_rules,     # number of synonymic low-level representations (multiplicity)
+            rule_sequence_type=1,
+            s_2=2,
+            s_3=3,       # size of the low-level representations
+            num_layers=args.num_layers,       # number of levels in the hierarchy
+            seed_rules=args.seed_rules,
+            seed_sample=args.seed_sample,
+            train_size=args.train_size,
+            test_size=args.test_size,
+            input_format=args.input_format,
+            whitening=args.whitening   
+            )
+    else:
+        raise ValueError('dataset argument is invalid!')
+
+    trainset = torch.utils.data.Subset(dataset, range(args.train_size))
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+
+    if args.test_size:
+        testset = torch.utils.data.Subset(dataset, range(args.train_size, args.train_size+args.test_size))
+        test_loader = torch.utils.data.DataLoader(testset, batch_size=1024, shuffle=False, num_workers=0)
+    else:
+        test_loader = None
+
+    return train_loader, test_loader
+
+
+
+def init_model_mixed(args):
+    """
+    Initialise machine-learning model. 
+    """
+    torch.manual_seed(args.seed_model)
+
+    if args.model == 'hcnn_mixed':
+        model = models.hCNN_mixed(
+            rule_sequence_type=args.rule_sequence_type,
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            num_layers=args.depth,
+            bias=args.bias,
+            norm='mf' #TODO: add arg for different norm
+        )
+        args.lr *= args.width #TODO: modify for different norm
+
+
+    model = model.to(args.device)
+
+    return model
+
+
+
+
+
+
+
+
 def init_data(args):
     """
     Initialise dataset.
@@ -272,6 +343,25 @@ def init_training( model, args):
         )
 
     return criterion, optimizer, scheduler
+
+def init_output_mixed( model, criterion, train_loader, test_loader, args):
+    """
+    Initialise output of the experiment.
+    
+    Returns:
+        list with the dynamics, best model.
+    """
+
+    trainloss, trainacc = measures.test(model, train_loader, args.device)
+    testloss, testacc = measures.test(model, test_loader, args.device)
+    
+    print_dict = {'t': 0, 'trainloss': trainloss, 'trainacc': trainacc, 'testloss': testloss, 'testacc': testacc}
+    dynamics = [print_dict]
+
+    best = {'step':0, 'model': None, 'loss': testloss}
+
+    return dynamics, best
+
 
 def init_output( model, criterion, train_loader, test_loader, args):
     """
