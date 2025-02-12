@@ -45,14 +45,21 @@ class MyConv1d_mixed_start_2(nn.Module):
             output_dim = input_dim // 5
         """
 
-        #out_2 = (
+        # out_2 = (
         #    F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
-            #/ (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
-        #)
-        out_2 =F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
-        out_3 =F.conv1d(x[:, :, 2:], self.filter_3, self.bias_3, stride=self.stride)
+        # / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+        # )
+        out_2 = F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+        out_3 = F.conv1d(x[:, :, 2:], self.filter_3, self.bias_3, stride=self.stride)
         out = torch.cat((out_2, out_3), dim=-1)
-        out = out / (self.filter_2.size(1) * self.filter_2.size(2) + self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        out = (
+            out
+            / (
+                self.filter_2.size(1) * self.filter_2.size(2)
+                + self.filter_3.size(1) * self.filter_3.size(2)
+            )
+            ** 0.5
+        )
         return out
 
 
@@ -71,24 +78,24 @@ class MyConv1d_mixed_start_3(nn.Module):
 
         # Two separate filters with proper initialization
         filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
-        torch.nn.init.kaiming_uniform_(filter_2, a=0.1)  # Scaled-down initialization for filter 2
+        torch.nn.init.kaiming_uniform_(
+            filter_2, a=0.1
+        )  # Scaled-down initialization for filter 2
         self.filter_2 = nn.Parameter(filter_2)
 
         filter_3 = torch.empty(out_channels, in_channels, self.filter_size_3)
-        torch.nn.init.kaiming_uniform_(filter_3, a=1.0)  # Standard initialization for filter 3
+        torch.nn.init.kaiming_uniform_(
+            filter_3, a=1.0
+        )  # Standard initialization for filter 3
         self.filter_3 = nn.Parameter(filter_3)
 
-
-
-
-
         # Two separate filters
-        #self.filter_2 = nn.Parameter(
-         #   torch.randn(out_channels, in_channels, self.filter_size_2)
-        #)
-        #self.filter_3 = nn.Parameter(
-         #   torch.randn(out_channels, in_channels, self.filter_size_3)
-        #)
+        # self.filter_2 = nn.Parameter(
+        #   torch.randn(out_channels, in_channels, self.filter_size_2)
+        # )
+        # self.filter_3 = nn.Parameter(
+        #   torch.randn(out_channels, in_channels, self.filter_size_3)
+        # )
 
         # Bias terms
         if bias:
@@ -110,16 +117,124 @@ class MyConv1d_mixed_start_3(nn.Module):
         """
 
         # Apply convolution separately on patch size 2
-        #out_3 = (
-         #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
-          #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
-        #)
-        out_3 =F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        # out_3 = (
+        #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
+        out_3 = F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
         # Apply convolution separately on patch size 3 (offset input by 2)
         out_2 = F.conv1d(x[:, :, 3:], self.filter_2, self.bias_2, stride=self.stride)
         # Concatenate along the last dimension
         out = torch.cat((out_3, out_2), dim=-1)
-        out = out / (self.filter_2.size(1) * self.filter_2.size(2) + self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        out = (
+            out
+            / (
+                self.filter_2.size(1) * self.filter_2.size(2)
+                + self.filter_3.size(1) * self.filter_3.size(2)
+            )
+            ** 0.5
+        )
+        return out
+
+
+class MyConv1d_2(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_2 = 2
+
+        self.stride = 1
+
+        # Two separate filters with proper initialization
+        filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
+        torch.nn.init.kaiming_uniform_(
+            filter_2, a=1.0
+        )  # Scaled-down initialization for filter 2
+        self.filter_2 = nn.Parameter(filter_2)
+
+        # Bias terms
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Concatenated convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = input_dim // 5
+        """
+
+        # Apply convolution separately on patch size 2
+        # out_3 = (
+        #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
+        out = (
+            F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+            / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+        )
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        # Concatenate along the last dimension
+        return out
+    
+class MyConv1d_3(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_3 = 3
+
+        self.stride = 1
+
+        # Two separate filters with proper initialization
+        filter_3 = torch.empty(out_channels, in_channels, self.filter_size_3)
+        torch.nn.init.kaiming_uniform_(
+            filter_3, a=0.1
+        )  # Scaled-down initialization for filter 2
+        self.filter_3 = nn.Parameter(filter_3)
+
+        # Bias terms
+        if bias:
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_3", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Concatenated convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = input_dim // 5
+        """
+
+        # Apply convolution separately on patch size 2
+        # out_3 = (
+        #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
+        out = (
+            F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        )
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        # Concatenate along the last dimension
         return out
 
 
@@ -147,7 +262,9 @@ class MyLinear(nn.Module):
         Returns:
             An affine transformation of x, tensor of size (batch_size, *, out_dim)
         """
-        x = F.linear(x, self.weight, self.bias) / (x.size(2)*x.size(1)) ** 0.5  # standard scaling
+        x = (
+            F.linear(x, self.weight, self.bias) / (x.size(2) * x.size(1)) ** 0.5
+        )  # standard scaling
         return x
 
 
@@ -191,28 +308,26 @@ class hCNN_mixed(nn.Module):
                 (
                     MyConv1d_mixed_start_2(in_channels, nn_dim, bias=bias)
                     if start_patches[0] == 2
-                    else MyConv1d_mixed_start_3(
-                        in_channels, nn_dim, bias=bias
-                    )
+                    else MyConv1d_mixed_start_3(in_channels, nn_dim, bias=bias)
                 ),
                 nn.ReLU(),
             ),
             *[
                 nn.Sequential(
                     (
-                        MyConv1d_mixed_start_2(
-                            nn_dim, nn_dim, bias=bias
-                        )
+                        MyConv1d_mixed_start_2(nn_dim, nn_dim, bias=bias)
                         if start_patches[l] == 2
-                        else MyConv1d_mixed_start_3(
-                            nn_dim, nn_dim,bias=bias
-                        )
+                        else MyConv1d_mixed_start_3(nn_dim, nn_dim, bias=bias)
                     ),
                     nn.ReLU(),
                 )
                 for l in range(1, num_layers - 1)
             ],
-            MyLinear(start_patches[-1], 1, bias=bias),
+            (
+                MyConv1d_2(nn_dim, nn_dim, bias=bias)
+                if start_patches[-1] == 2
+                else MyConv1d_3(nn_dim, nn_dim, bias=bias)
+            ),
             nn.ReLU(),
         )
 
