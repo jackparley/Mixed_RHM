@@ -14,8 +14,8 @@ from collections import defaultdict
 from .utils import dec2bin, dec2base, base2dec
 
 
-def index_to_choice(index):
-    n, m2, m3 = 16, 4, 64  # Number of choices per stage
+def index_to_choice(index,n,m2,m3):
+    #n, m2, m3 = 16, 4, 64  # Number of choices per stage
 
     index -= 1  # Convert to 0-based index
 
@@ -31,13 +31,13 @@ def index_to_choice(index):
     return [x1, x2, x3, x4]
 
 
-def sample_data_from_indices_fixed_tree(samples, rules, rule_types):
+def sample_data_from_indices_fixed_tree(samples, rules, rule_types,n,m_2,m_3):  
     L=len(rules)
     all_features = []
     labels=[]
     samples=samples+1
     for sample in samples:
-        chosen_rules=index_to_choice(sample)
+        chosen_rules=index_to_choice(sample,n,m_2,m_3)  
         labels.append(chosen_rules[0]-1)
         #print(chosen_rules[0])
         chosen_rules=[x-1 for x in chosen_rules]        
@@ -373,7 +373,7 @@ class MixedRandomHierarchyModel(Dataset):
                 samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
 
             self.features, self.labels = sample_data_from_indices_fixed_tree(
-                samples, self.rules,rule_types
+                samples, self.rules,rule_types,num_classes,m_2,m_3
             )
 
         else:
