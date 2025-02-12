@@ -69,13 +69,26 @@ class MyConv1d_mixed_start_3(nn.Module):
         self.filter_size_3 = 3
         self.stride = 5  # Stride should be the sum of both patch sizes (2+3)
 
+        # Two separate filters with proper initialization
+        filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
+        torch.nn.init.kaiming_uniform_(filter_2, a=0.1)  # Scaled-down initialization for filter 2
+        self.filter_2 = nn.Parameter(filter_2)
+
+        filter_3 = torch.empty(out_channels, in_channels, self.filter_size_3)
+        torch.nn.init.kaiming_uniform_(filter_3, a=1.0)  # Standard initialization for filter 3
+        self.filter_3 = nn.Parameter(filter_3)
+
+
+
+
+
         # Two separate filters
-        self.filter_2 = nn.Parameter(
-            torch.randn(out_channels, in_channels, self.filter_size_2)
-        )
-        self.filter_3 = nn.Parameter(
-            torch.randn(out_channels, in_channels, self.filter_size_3)
-        )
+        #self.filter_2 = nn.Parameter(
+         #   torch.randn(out_channels, in_channels, self.filter_size_2)
+        #)
+        #self.filter_3 = nn.Parameter(
+         #   torch.randn(out_channels, in_channels, self.filter_size_3)
+        #)
 
         # Bias terms
         if bias:
@@ -134,7 +147,7 @@ class MyLinear(nn.Module):
         Returns:
             An affine transformation of x, tensor of size (batch_size, *, out_dim)
         """
-        x = F.linear(x, self.weight, self.bias) / x.size(-1) ** 0.5  # standard scaling
+        x = F.linear(x, self.weight, self.bias) / (x.size(2)*x.size(1)) ** 0.5  # standard scaling
         return x
 
 
