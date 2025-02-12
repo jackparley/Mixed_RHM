@@ -38,7 +38,7 @@ def init_data_mixed(args):
     """
     if args.dataset=='mixed_rhm':
         
-        test_size = args.max_data-args.train_size
+        test_size = min(args.max_data-args.train_size,20000)
         dataset=datasets.MixedRandomHierarchyModel(
             num_features=args.num_features,     # vocabulary size
             num_classes=args.num_classes,      # number of classes
