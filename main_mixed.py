@@ -49,16 +49,16 @@ def run( args):
     start_time = time.time()
     step = 0
     dynamics, best = init.init_output_mixed( model, criterion, train_loader, test_loader, args)
-    if args.checkpoints:
+    #if args.checkpoints:
 
-        output = {
-            'model': copy.deepcopy(model.state_dict()),
-            'state': dynamics[-1],
-            'step': step
-        }
-        with open(args.outname+f'_t{0}', "wb") as handle:
-            pickle.dump(args, handle)
-            pickle.dump(output, handle)
+     #   output = {
+      #      'model': copy.deepcopy(model.state_dict()),
+       #     'state': dynamics[-1],
+        #    'step': step
+        #}
+        #with open(args.outname+f'_t{0}', "wb") as handle:
+         #   pickle.dump(args, handle)
+          #  pickle.dump(output, handle)
 
     for epoch in range(args.max_epochs):
 
@@ -94,26 +94,27 @@ def run( args):
 
                         train_loss, train_acc = measures.test(model, train_loader, args.device)
                         save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                        dynamics.append(save_dict)
 
-                        if args.checkpoints:
-                            output = {
-                                'model': copy.deepcopy(model.state_dict()),
-                                'state': dynamics[-1],
-                                'step': step
-                            }
-                            with open(args.outname+f'_t{step}', "wb") as handle:
-                                pickle.dump(output, handle)
-                        else:
-                            output = {
-                                'init': model0.state_dict(),
-                                'best': best,
-                                'model': copy.deepcopy(model.state_dict()),
-                                'dynamics': dynamics,
-                                'step': step
-                            }
-                            with open(args.outname, "wb") as handle:
-                                pickle.dump(args, handle)
-                                pickle.dump(output, handle)
+                        #if args.checkpoints:
+                         #   output = {
+                          #      'model': copy.deepcopy(model.state_dict()),
+                           #     'state': dynamics[-1],
+                            #    'step': step
+                            #}
+                            #with open(args.outname+f'_t{step}', "wb") as handle:
+                             #   pickle.dump(output, handle)
+                        #else:
+                         #   output = {
+                          #      'init': model0.state_dict(),
+                           #     'best': best,
+                            #    'model': copy.deepcopy(model.state_dict()),
+                             #   'dynamics': dynamics,
+                              #  'step': step
+                            #}
+                            #with open(args.outname, "wb") as handle:
+                             #   pickle.dump(args, handle)
+                              #  pickle.dump(output, handle)
                         save_ckpt = next(save_ckpts)
 
 
@@ -123,27 +124,31 @@ def run( args):
             save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
             dynamics.append(save_dict)
 
-            if args.checkpoints:
-                output = {
-                    'model': copy.deepcopy(model.state_dict()),
-                    'state': dynamics[-1],
-                    'step': step
-                }
-                with open(args.outname+f'_t{step}', "wb") as handle:
-                    pickle.dump(output, handle)
-            else:
-                output = {
-                    'init': model0.state_dict(),
-                    'best': best,
-                    'model': copy.deepcopy(model.state_dict()),
-                    'dynamics': dynamics,
-                    'step': step
-                }
-                with open(args.outname, "wb") as handle:
-                    pickle.dump(args, handle)
-                    pickle.dump(output, handle)
+            #if args.checkpoints:
+             #   output = {
+              #      'model': copy.deepcopy(model.state_dict()),
+               #     'state': dynamics[-1],
+                #    'step': step
+                #}
+                #with open(args.outname+f'_t{step}', "wb") as handle:
+                 #   pickle.dump(output, handle)
+            #else:
+             #   output = {
+              #      'init': model0.state_dict(),
+               #     'best': best,
+                #    'model': copy.deepcopy(model.state_dict()),
+                 #   'dynamics': dynamics,
+                  #  'step': step
+                #}
+                #with open(args.outname, "wb") as handle:
+                 #   pickle.dump(args, handle)
+                  #  pickle.dump(output, handle)
             break
+    #filename = 'dynamics.pkl'
 
+# Write the list to a pickle file   
+    with open(args.outname, 'wb') as file:
+        pickle.dump(dynamics, file)        
     return None
 
 torch.set_default_dtype(torch.float32)
@@ -156,13 +161,16 @@ parser.add_argument("--device", type=str, default='cuda')
 parser.add_argument('--dataset', type=str)
 parser.add_argument('--num_features', metavar='v', type=int, help='number of features')
 parser.add_argument('--num_classes', metavar='n', type=int, help='number of classes')
+parser.add_argument('--num_tokens', type=int, help='input length')
 parser.add_argument('--fraction_rules', metavar='f', type=float, help='fraction of rules')
 parser.add_argument('--rule_sequence_type', type=int, help='rule sequence type')
 parser.add_argument('--num_layers', metavar='L', type=int, help='number of layers')
 parser.add_argument("--seed_rules", type=int, help='seed for the dataset')
 parser.add_argument('--train_size', metavar='Ptr', type=int, help='training set size')
 parser.add_argument('--batch_size', metavar='B', type=int, help='batch size')
-parser.add_argument('--test_size', metavar='Pte', type=int, help='test set size')
+parser.add_argument('--max_data', type=int, help='maximum number of data points')
+
+#parser.add_argument('--test_size', metavar='Pte', type=int, help='test set size')
 parser.add_argument("--seed_sample", type=int, help='seed for the sampling of train and testset')
 parser.add_argument('--input_format', type=str, default='onehot')
 parser.add_argument('--whitening', type=int, default=0)

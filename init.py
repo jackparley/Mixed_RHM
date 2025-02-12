@@ -38,7 +38,7 @@ def init_data_mixed(args):
     """
     if args.dataset=='mixed_rhm':
         
-
+        test_size = args.max_data-args.train_size
         dataset=datasets.MixedRandomHierarchyModel(
             num_features=args.num_features,     # vocabulary size
             num_classes=args.num_classes,      # number of classes
@@ -50,7 +50,7 @@ def init_data_mixed(args):
             seed_rules=args.seed_rules,
             seed_sample=args.seed_sample,
             train_size=args.train_size,
-            test_size=args.test_size,
+            test_size=test_size,
             input_format=args.input_format,
             whitening=args.whitening   
             )
@@ -59,12 +59,8 @@ def init_data_mixed(args):
 
     trainset = torch.utils.data.Subset(dataset, range(args.train_size))
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
-
-    if args.test_size:
-        testset = torch.utils.data.Subset(dataset, range(args.train_size, args.train_size+args.test_size))
-        test_loader = torch.utils.data.DataLoader(testset, batch_size=1024, shuffle=False, num_workers=0)
-    else:
-        test_loader = None
+    testset = torch.utils.data.Subset(dataset, range(args.train_size, args.train_size+test_size))
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=1024, shuffle=False, num_workers=0)
 
     return train_loader, test_loader
 
@@ -87,6 +83,27 @@ def init_model_mixed(args):
             norm='mf' #TODO: add arg for different norm
         )
         args.lr *= args.width #TODO: modify for different norm
+
+    elif args.model == 'fcn':
+
+        if args.depth == 0:
+            model = models.Perceptron(
+                input_dim=args.num_tokens*args.num_features,
+                out_dim=args.num_classes,
+                norm=args.num_tokens**.5
+            )
+        else:
+
+            assert args.width is not None, 'FCN model requires argument width!'
+            model = models.MLP(
+                input_dim=args.num_tokens*args.num_features,
+                nn_dim=args.width,
+                out_dim=args.num_classes,
+                num_layers=args.depth,
+                bias=args.bias,
+                norm='mf' #TODO: add arg for different norm
+            )
+            args.lr *= args.width #TODO: modify for different norm
 
 
     model = model.to(args.device)

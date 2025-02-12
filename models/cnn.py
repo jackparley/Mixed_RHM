@@ -45,15 +45,14 @@ class MyConv1d_mixed_start_2(nn.Module):
             output_dim = input_dim // 5
         """
 
-        out_2 = (
-            F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
-            / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
-        )
-        out_3 = (
-            F.conv1d(x[:, :, 2:], self.filter_3, self.bias_3, stride=self.stride)
-            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
-        )
+        #out_2 = (
+        #    F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+            #/ (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+        #)
+        out_2 =F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+        out_3 =F.conv1d(x[:, :, 2:], self.filter_3, self.bias_3, stride=self.stride)
         out = torch.cat((out_2, out_3), dim=-1)
+        out = out / (self.filter_2.size(1) * self.filter_2.size(2) + self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
         return out
 
 
@@ -98,17 +97,16 @@ class MyConv1d_mixed_start_3(nn.Module):
         """
 
         # Apply convolution separately on patch size 2
-        out_3 = (
-            F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
-            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
-        )
+        #out_3 = (
+         #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+          #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        #)
+        out_3 =F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
         # Apply convolution separately on patch size 3 (offset input by 2)
-        out_2 = (
-            F.conv1d(x[:, :, 3:], self.filter_2, self.bias_2, stride=self.stride)
-            / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
-        )
+        out_2 = F.conv1d(x[:, :, 3:], self.filter_2, self.bias_2, stride=self.stride)
         # Concatenate along the last dimension
         out = torch.cat((out_3, out_2), dim=-1)
+        out = out / (self.filter_2.size(1) * self.filter_2.size(2) + self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
         return out
 
 
