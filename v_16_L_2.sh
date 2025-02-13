@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name mixed_rhm_v_16_L_2_P_8064_lr_1_randn_a   # Assign unique name
+#SBATCH --job-name mixed_rhm_v_16_L_2_PP_range   # Assign unique name
 #SBATCH --chdir /scratch/parley/   # go to scratch
 #SBATCH -o /home/parley/running/%A.%x_%a.out # STDOUT
 #SBATCH -e /home/parley/running/%A.%x_%a.err # STDERR
@@ -16,6 +16,8 @@
 
 
 # Define dataset arguments
+
+insert_train=$1
 
 seed1=$(od -An -N3 -i /dev/random)
 #seed1=100
@@ -33,7 +35,7 @@ RULE_SEQUENCE_TYPE=1
 NUM_LAYERS=2
 NUM_TOKENS=5
 #SEED_RULES=seed1
-TRAIN_SIZE=8064
+#TRAIN_SIZE=8064
 BATCH_SIZE=128
 #TEST_SIZE=768
 MAX_DATA=16384
@@ -62,7 +64,7 @@ PRINT_FREQ=64
 SAVE_FREQ=3
 CHECKPOINTS_FLAG="--checkpoints"  # Use "--checkpoints" to enable, remove it if not needed
 LOSS_THRESHOLD=0.001
-OUTNAME="dynamics_run_6_122_${SLURM_ARRAY_TASK_ID}.pkl"
+OUTNAME="dynamics_v_16_L_2_P_${insert_train}_${SLURM_ARRAY_TASK_ID}.pkl"
 
 
 path="${SLURM_JOB_NAME}" # create directory with ID
@@ -84,7 +86,7 @@ srun python /home/parley/Mixed_RHM/main_mixed.py \
     --rule_sequence_type "$RULE_SEQUENCE_TYPE" \
     --num_layers "$NUM_LAYERS" \
     --seed_rules ${seed1} \
-    --train_size "$TRAIN_SIZE" \
+    --train_size ${insert_train} \
     --batch_size "$BATCH_SIZE" \
     --max_data "$MAX_DATA" \
     --seed_sample ${seed2} \
