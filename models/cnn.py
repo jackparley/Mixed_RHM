@@ -14,13 +14,14 @@ class MyConv1d_mixed_start_2(nn.Module):
             bias: Whether to include a bias term
         """
         super().__init__()
+        a=0.1
         self.filter_size_2 = 2
         self.filter_size_3 = 3
         self.stride = 5  # Stride should be the sum of both patch sizes (2+3)
 
         # Two separate filters
         self.filter_2 = nn.Parameter(
-            torch.randn(out_channels, in_channels, self.filter_size_2)
+            a*torch.randn(out_channels, in_channels, self.filter_size_2)
         )
         self.filter_3 = nn.Parameter(
             torch.randn(out_channels, in_channels, self.filter_size_3)
