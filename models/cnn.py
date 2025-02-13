@@ -126,14 +126,14 @@ class MyConv1d_mixed_start_3(nn.Module):
         out_2 = F.conv1d(x[:, :, 3:], self.filter_2, self.bias_2, stride=self.stride)
         # Concatenate along the last dimension
         out = torch.cat((out_3, out_2), dim=-1)
-        out = (
-            out
-            / (
-                self.filter_2.size(1) * self.filter_2.size(2)
-                + self.filter_3.size(1) * self.filter_3.size(2)
-            )
-            ** 0.5
-        )
+        # out = (
+        #   out
+        #  / (
+        #     self.filter_2.size(1) * self.filter_2.size(2)
+        #    + self.filter_3.size(1) * self.filter_3.size(2)
+        # )
+        # ** 0.5
+        # )
         return out
 
 
@@ -179,14 +179,17 @@ class MyConv1d_2(nn.Module):
         #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
         #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
         # )
-        out = (
-            F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
-            / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
-        )
+        out = F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+
+        # out = (
+        #   F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride)
+        #   / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+        # )
         # Apply convolution separately on patch size 3 (offset input by 2)
         # Concatenate along the last dimension
         return out
-    
+
+
 class MyConv1d_3(nn.Module):
     def __init__(self, in_channels, out_channels, bias=False):
         """
@@ -229,10 +232,12 @@ class MyConv1d_3(nn.Module):
         #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
         #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
         # )
-        out = (
-            F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
-            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
-        )
+        out = F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+
+        # out = (
+        #    F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #   / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
         # Apply convolution separately on patch size 3 (offset input by 2)
         # Concatenate along the last dimension
         return out
