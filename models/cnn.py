@@ -5,6 +5,134 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class MyConv1d_mixed_interleave_start_2(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_2 = 2
+        self.filter_size_3 = 3
+        self.stride = 5  # Stride should be the sum of both patch sizes (2+3)
+
+        # Two separate filters
+        self.filter_2 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_2))
+        self.filter_3 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_3))
+
+        # Bias terms
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+            self.register_parameter("bias_3", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Interleaved convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = (num valid patches from both filters, interleaved).
+        """
+
+        # Apply convolution separately on patch size 2
+        out_2 = F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride) / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        out_3 = F.conv1d(x[:, :, 2:], self.filter_3, self.bias_3, stride=self.stride) / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+
+        # Determine min valid length to interleave
+        min_length = min(out_2.shape[-1], out_3.shape[-1])
+
+        # Initialize interleaved output tensor
+        batch_size, out_channels = out_2.shape[:2]
+        total_length = out_2.shape[-1] + out_3.shape[-1]
+        interleaved_out = torch.zeros(batch_size, out_channels, total_length, device=x.device)
+
+        # Interleave up to min_length
+        interleaved_out[:, :, 0:2*min_length:2] = out_3[:, :, :min_length]  # Place out_3 at even indices
+        interleaved_out[:, :, 1:2*min_length:2] = out_2[:, :, :min_length]  # Place out_2 at odd indices
+
+        # Append remaining values from the longer output (if any)
+        if out_3.shape[-1] > min_length:
+            interleaved_out[:, :, 2*min_length:] = out_3[:, :, min_length:]
+        elif out_2.shape[-1] > min_length:
+            interleaved_out[:, :, 2*min_length:] = out_2[:, :, min_length:]
+
+        return interleaved_out
+    
+
+
+class MyConv1d_mixed_interleave_start_3(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_2 = 2
+        self.filter_size_3 = 3
+        self.stride = 5  # Stride should be the sum of both patch sizes (2+3)
+
+        # Two separate filters
+        self.filter_2 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_2))
+        self.filter_3 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_3))
+
+        # Bias terms
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+            self.register_parameter("bias_3", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Interleaved convolutions applied to alternating patch sizes,
+            starting with a patch of length 3.
+        """
+
+        # Apply convolution separately on patch size 3 (start with this one)
+        out_3 = F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride) / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+
+        # Apply convolution separately on patch size 2 (offset input by 3 instead of 2)
+        out_2 = F.conv1d(x[:, :, 3:], self.filter_2, self.bias_2, stride=self.stride) / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+
+        # Determine min valid length to interleave
+        min_length = min(out_2.shape[-1], out_3.shape[-1])
+
+        # Initialize interleaved output tensor
+        batch_size, out_channels = out_2.shape[:2]
+        total_length = out_2.shape[-1] + out_3.shape[-1]
+        interleaved_out = torch.zeros(batch_size, out_channels, total_length, device=x.device)
+
+        # Interleave up to min_length
+        interleaved_out[:, :, 0:2*min_length:2] = out_3[:, :, :min_length]  # Place out_3 at even indices
+        interleaved_out[:, :, 1:2*min_length:2] = out_2[:, :, :min_length]  # Place out_2 at odd indices
+
+        # Append remaining values from the longer output (if any)
+        if out_3.shape[-1] > min_length:
+            interleaved_out[:, :, 2*min_length:] = out_3[:, :, min_length:]
+        elif out_2.shape[-1] > min_length:
+            interleaved_out[:, :, 2*min_length:] = out_2[:, :, min_length:]
+
+        return interleaved_out
+
+
+
+
 class MyConv1d_mixed_start_2(nn.Module):
     def __init__(self, in_channels, out_channels, bias=False):
         """
@@ -310,18 +438,18 @@ class hCNN_mixed(nn.Module):
         self.hidden = nn.Sequential(
             nn.Sequential(
                 (
-                    MyConv1d_mixed_start_2(in_channels, nn_dim, bias=bias)
+                    MyConv1d_mixed_interleave_start_2(in_channels, nn_dim, bias=bias)
                     if start_patches[0] == 2
-                    else MyConv1d_mixed_start_3(in_channels, nn_dim, bias=bias)
+                    else MyConv1d_mixed_interleave_start_3(in_channels, nn_dim, bias=bias)
                 ),
                 nn.ReLU(),
             ),
             *[
                 nn.Sequential(
                     (
-                        MyConv1d_mixed_start_2(nn_dim, nn_dim, bias=bias)
+                        MyConv1d_mixed_interleave_start_2(nn_dim, nn_dim, bias=bias)
                         if start_patches[l] == 2
-                        else MyConv1d_mixed_start_3(nn_dim, nn_dim, bias=bias)
+                        else MyConv1d_mixed_interleave_start_3(nn_dim, nn_dim, bias=bias)
                     ),
                     nn.ReLU(),
                 )
