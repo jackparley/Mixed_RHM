@@ -14,9 +14,9 @@ from collections import defaultdict
 from .utils import dec2bin, dec2base, base2dec
 
 
-def index_to_choice(index,n,m2,m3,L):
+def index_to_choice(index,n,m2,m3,L,rule_sequence_type):
     #n, m2, m3 = 16, 4, 64  # Number of choices per stage
-    if L==2:
+    if L==2 and rule_sequence_type==1:
         index -= 1  # Convert to 0-based index
 
         x1 = index // (m2 * m3 * m2) + 1
@@ -28,6 +28,22 @@ def index_to_choice(index,n,m2,m3,L):
         x3 = index // m2 + 1
         x4 = index % m2 + 1
         choice=[x1, x2, x3, x4]
+    elif L==2 and rule_sequence_type==3:
+        bases = [n, m3,m3,m3,m3]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+        
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+
     elif L==3:
         bases = [n, m2, m3, m2, m3, m2, m3, m2, m3]  # Alternating base sizes
         index -= 1  # Convert to 0-based index
@@ -47,13 +63,13 @@ def index_to_choice(index,n,m2,m3,L):
     return choice
 
 
-def sample_data_from_indices_fixed_tree(samples, rules, rule_types,n,m_2,m_3):  
+def sample_data_from_indices_fixed_tree(samples, rules, rule_types,n,m_2,m_3,rule_sequence_type):  
     L=len(rules)
     all_features = []
     labels=[]
     samples=samples+1
     for sample in samples:
-        chosen_rules=index_to_choice(sample,n,m_2,m_3,L)  
+        chosen_rules=index_to_choice(sample,n,m_2,m_3,L,rule_sequence_type)  
         labels.append(chosen_rules[0]-1)
         #print(chosen_rules[0])
         chosen_rules=[x-1 for x in chosen_rules]        
@@ -376,6 +392,8 @@ class MixedRandomHierarchyModel(Dataset):
             rule_types=[i % 2 for i in range(max_rule_types)]
         elif rule_sequence_type == 2:
             rule_types=[(i+1) % 2 for i in range(max_rule_types)]
+        elif rule_sequence_type == 3:
+            rule_types=[1 for i in range(max_rule_types)]
 
         tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
         
@@ -389,7 +407,7 @@ class MixedRandomHierarchyModel(Dataset):
                 samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
 
             self.features, self.labels = sample_data_from_indices_fixed_tree(
-                samples, self.rules,rule_types,num_classes,m_2,m_3
+                samples, self.rules,rule_types,num_classes,m_2,m_3,rule_sequence_type
             )
 
         else:
