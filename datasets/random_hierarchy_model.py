@@ -43,6 +43,21 @@ def index_to_choice(index,n,m2,m3,L,rule_sequence_type):
             total_combinations //= base  # Reduce divisor dynamically
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
+    elif L==2 and rule_sequence_type==2:
+        bases = [n, m3,m2,m3,m2]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+        
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
 
     elif L==3:
         bases = [n, m2, m3, m2, m3, m2, m3, m2, m3]  # Alternating base sizes
@@ -358,10 +373,11 @@ class MixedRandomHierarchyModel(Dataset):
             num_features=8,     # vocabulary size
             num_classes=2,      # number of classes
             fraction_rules=0.5,     # number of synonymic low-level representations (multiplicity)
-            rule_sequence_type=1,
+            rule_sequence_type=2,
             s_2=2,
             s_3=3,       # size of the low-level representations
-            num_layers=2,       # number of levels in the hierarchy
+            num_layers=2,
+            max_data=1000,       # number of levels in the hierarchy
             seed_rules=0,
             seed_sample=1,
             train_size=-1,
@@ -384,6 +400,7 @@ class MixedRandomHierarchyModel(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
         self.rule_sequence_type = rule_sequence_type
+        self.max_data=max_data
 
         self.rules = sample_mixed_rules(num_features,num_classes,m_2,m_3,s_2,s_3,num_layers,seed_rules)
         max_rule_types = int(np.floor((3**num_layers-1)/2))
@@ -395,14 +412,14 @@ class MixedRandomHierarchyModel(Dataset):
         elif rule_sequence_type == 3:
             rule_types=[1 for i in range(max_rule_types)]
 
-        tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
+        #tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
         
         if not replacement:
             if train_size == -1:
                 samples = torch.arange( max_data)
 
             else:
-                test_size = min( test_size, max_data-train_size)
+                #test_size = min( test_size, max_data-train_size)
                 random.seed(seed_sample)
                 samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
 
@@ -433,6 +450,12 @@ class MixedRandomHierarchyModel(Dataset):
                 inv_sqrt_norm = (1.-1./num_features) ** -.5
                 self.features = (self.features - 1./num_features) * inv_sqrt_norm
             self.features = self.features.permute(0, 2, 1)
+            batch_size, num_features, input_size = self.features.shape
+            target_size = 9
+            if input_size < target_size:
+                pad_size = target_size - input_size
+                pad_tensor = torch.zeros(batch_size, num_features, pad_size, device=self.features.device, dtype=self.features.dtype)
+                self.features = torch.cat([self.features, pad_tensor], dim=2)  # Stack zeros at the end along the last dimension
 
         elif 'long' in input_format:
             self.features = self.features.long() + 1
