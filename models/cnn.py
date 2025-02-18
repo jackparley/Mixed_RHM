@@ -587,9 +587,203 @@ class hCNN(nn.Module):
         )  # Global Average Pooling if the final spatial dimension is > 1
         x = x @ self.readout / self.norm
         return x
+    
+
+
+
+class ComputeSumOfSquares(nn.Module):
+    """ Custom module to compute sum of squares and pass both input and sum forward. """
+    def forward(self, x):
+        sum_of_squares = torch.sum(x**2, dim=(1, 2), keepdim=True)
+        sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+        sum_of_squares = sum_of_squares.squeeze()
+        
+        return x, sum_of_squares  # Returning a tuple 
+
+
+class TupleReLU(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.relu = nn.ReLU()
+
+    def forward(self, inputs):
+        x, sum_of_squares = inputs  # Unpack tuple
+        return self.relu(x), sum_of_squares  # Apply ReLU only to x
+
+
 
 
 class MyConv1d_ell_1(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        super().__init__()
+        self.filter_size_2 = 2
+        self.filter_size_3 = 3
+        self.stride = 1  # Stride should be the sum of both patch sizes (2+3)
+
+        self.filter_2 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_2))
+        self.filter_3 = nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_3))
+
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+            self.register_parameter("bias_3", None)
+
+    def forward(self, inputs):
+        x, sum_of_squares = inputs  # Unpack tuple
+
+        out_2 = F.conv1d(x, self.filter_2, self.bias_2, stride=self.stride) / (self.filter_2.size(1) * self.filter_2.size(2)) ** 0.5
+        out_3 = F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride) / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+
+        pad_2 = torch.zeros(out_2.shape[0], out_2.shape[1], 1, device=out_2.device, dtype=out_2.dtype)
+        out_2_padded = torch.cat([out_2, pad_2], dim=2)
+        pad_3 = torch.zeros(out_3.shape[0], out_3.shape[1], 2, device=out_3.device, dtype=out_3.dtype)
+        out_3_padded = torch.cat([out_3, pad_3], dim=2)
+
+        interleaved_out = torch.stack((out_2_padded, out_3_padded), dim=3).view(out_2.shape[0], out_2.shape[1], -1)
+
+        return interleaved_out, sum_of_squares  # Return tuple
+
+
+
+def nested_ranges_as_tensor(i, j,min_split):
+    # Generate pairs (k1, k2)
+    pairs = [(k1, k2) for k1 in range(i + min_split, j-min_split+1) for k2 in range(k1 + 1, j)]
+   
+    # Convert to a tensor
+    if pairs:
+        return torch.tensor(pairs)  # Shape: [num_pairs, 2]
+    else:
+        return torch.empty((0, 2), dtype=torch.int64)  # Handle case where no pairs exist
+
+
+class MyConv1d_ell_2(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_2 = 2
+        self.filter_size_3 = 3
+
+        # Two separate filters
+        self.filter_2 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_2)
+        )
+        self.filter_3 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3)
+        )
+
+        l = 2
+        self.n=9
+        self.min_d = 2**l
+        self.max_d = 3 ** (l)
+        self.min_split = 2 ** (l - 1)
+        self.max_split = 3 ** (l - 1)
+        self.n_span=3**(l-1)-2**(l-1)+1
+         # Dictionary to store kk_0 lists
+        self.stride = self.n_span  
+
+        self.kk_0_dict = {}
+        self.pairs_0_dict = {}
+        
+        for length in range(self.min_d, self.max_d + 1):  # Length of the span
+            kk_0 = np.array(range(self.min_split, length - self.min_split + 1))
+            kk_0 = kk_0[(kk_0 <= self.max_split) & (kk_0 >= (length - self.max_split))]
+            self.kk_0_dict[length] = kk_0.tolist()
+            pairs_0 = nested_ranges_as_tensor(0, length, self.min_split)
+            condition_1 = (pairs_0[:, 0] <= self.max_split)
+            condition_2 = ((pairs_0[:, 1] - pairs_0[:, 0]) <= self.max_split) & ((pairs_0[:, 1] - pairs_0[:, 0]) >= self.min_split)
+            condition_3 = ((pairs_0[:, 1] >= (length - self.max_split)) & (length-pairs_0[:, 1] >= self.min_split))
+# Combine all conditions
+            pairs_0 = pairs_0[condition_1 & condition_2 & condition_3]
+            self.pairs_0_dict[length] = pairs_0
+
+
+        # Pruning condition: keep elements <= max_split and >= (length - max_split)
+
+        # Bias terms
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+            self.register_parameter("bias_3", None)
+
+    def forward(self, inputs):
+        x, sum_of_squares = inputs  # Unpack tuple
+        # Apply convolution separately on patch size 2
+        outs=[]  
+        for length in range(self.min_d, self.max_d + 1):
+            kk_0 = self.kk_0_dict[length]
+            #print(kk_0)
+            out_d = torch.zeros(x.shape[0], self.filter_2.shape[0],self.n-length+1, device=x.device)
+            #print(out_d.shape)
+            for kk in kk_0:
+                dp_1=kk
+                dp_2=length-kk
+                full_filter = torch.zeros(self.filter_2.shape[0], self.filter_2.shape[1], length*self.n_span, device=self.filter_2.device)  # Shape (out_channels, in_channels, 10)
+                full_filter[:, :, [dp_1-self.min_split, self.n_span*dp_1+dp_2-self.min_split]] = self.filter_2  # Place values at positions 0 and 5
+                out_int = F.conv1d(x, full_filter, self.bias_2, stride=self.stride) / (full_filter.size(1) * self.filter_2.size(2)) ** 0.5
+                #print(out_int.shape)
+                out_d += out_int
+            pairs_0 = self.pairs_0_dict[length]
+            for pairs in pairs_0:
+                
+                dp_1=pairs[0]
+                dp_2=pairs[1]-pairs[0]
+                dp_3=length-pairs[1]
+                #print(dp_1,dp_2,dp_3)
+                full_filter = torch.zeros(self.filter_3.shape[0], self.filter_3.shape[1], length*self.n_span, device=self.filter_3.device)  # Shape (out_channels, in_channels, 10)
+                full_filter[:, :, [dp_1-self.min_split, self.n_span*dp_1+dp_2-self.min_split,self.n_span*(dp_1+dp_2)+dp_3-self.min_split]] = self.filter_3  # Place values at positions 0 and 5
+                out_int = F.conv1d(x, full_filter, self.bias_3, stride=self.stride) / (full_filter.size(1) * self.filter_3.size(2)) ** 0.5
+                #print(out_int.shape)
+                out_d += out_int
+            pad = torch.zeros(out_d.shape[0], out_d.shape[1], self.n-out_d.shape[2], device=out_d.device, dtype=out_d.dtype)
+            out_d_padded = torch.cat([out_d, pad], dim=2)
+            outs.append(out_d_padded)
+        # Step 1: Stack all elements in outs along a new dimension (dim=3)
+        intermediate = torch.stack(outs, dim=3)  # Shape: (batch_size, out_channels, seq_len, num_filters)
+
+# Step 2: Reshape to interleave
+        interleaved_out = intermediate.view(intermediate.shape[0], intermediate.shape[1], -1)
+
+        return interleaved_out,sum_of_squares  # Return tuple
+    
+
+
+class hCNN_inside(nn.Module):
+    def __init__(self, in_channels, nn_dim, out_channels, bias=False, norm="std"):
+        super().__init__()
+
+        self.hidden = nn.Sequential(
+            ComputeSumOfSquares(),
+            MyConv1d_ell_1(in_channels, nn_dim, bias=bias),
+            TupleReLU(),  # Use custom ReLU that handles tuples
+            MyConv1d_ell_2(nn_dim, nn_dim, bias=bias),
+            TupleReLU(),  # Again, use custom ReLU
+        )
+
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        x, sum_of_squares = self.hidden(x)
+        print(sum_of_squares)
+        x = x[torch.arange(x.shape[0]), :, sum_of_squares-4]  # Dynamic indexing
+        x = x @ self.readout / self.norm
+        return x
+
+
+
+class MyConv1d_ell_1_single(nn.Module):
     def __init__(self, in_channels, out_channels, bias=False):
         """
         Args:
@@ -633,19 +827,11 @@ class MyConv1d_ell_1(nn.Module):
         return interleaved_out
     
 
-def nested_ranges_as_tensor(i, j,min_split):
-    # Generate pairs (k1, k2)
-    pairs = [(k1, k2) for k1 in range(i + min_split, j-min_split+1) for k2 in range(k1 + 1, j)]
-   
-    # Convert to a tensor
-    if pairs:
-        return torch.tensor(pairs)  # Shape: [num_pairs, 2]
-    else:
-        return torch.empty((0, 2), dtype=torch.int64)  # Handle case where no pairs exist
+
 
 
 # Define the custom 1D convolutional layer
-class MyConv1d_ell_2(nn.Module):
+class MyConv1d_ell_2_single(nn.Module):
     def __init__(self, in_channels, out_channels, bias=False):
         """
         Args:
@@ -742,7 +928,7 @@ class MyConv1d_ell_2(nn.Module):
     
 
 
-class hCNN_inside(nn.Module):
+class hCNN_inside_single(nn.Module):
     def __init__(
         self,
         in_channels,
@@ -766,7 +952,7 @@ class hCNN_inside(nn.Module):
         """
         super().__init__()
 
-        self.hidden=nn.Sequential(MyConv1d_ell_1(in_channels, nn_dim, bias=bias),nn.ReLU(),MyConv1d_ell_2(nn_dim, nn_dim,bias=bias),nn.ReLU())
+        self.hidden=nn.Sequential(MyConv1d_ell_1_single(in_channels, nn_dim, bias=bias),nn.ReLU(),MyConv1d_ell_2_single(nn_dim, nn_dim,bias=bias),nn.ReLU())
 
         self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
         if norm == "std":
