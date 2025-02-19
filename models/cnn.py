@@ -280,7 +280,7 @@ class MyConv1d_2(nn.Module):
         self.filter_size_2 = 2
 
         self.stride = 1
-        a=0.1
+        #a=0.1
         # Two separate filters with proper initialization
         #filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
         #torch.nn.init.kaiming_uniform_(
@@ -288,7 +288,7 @@ class MyConv1d_2(nn.Module):
         #)  # Scaled-down initialization for filter 2
         #self.filter_2 = nn.Parameter(filter_2)
 
-        self.filter_2=nn.Parameter(a*torch.randn(out_channels, in_channels, self.filter_size_2))
+        self.filter_2=nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_2))
         # Bias terms
         if bias:
             self.bias_2 = nn.Parameter(torch.randn(out_channels))
@@ -331,14 +331,15 @@ class MyConv1d_3(nn.Module):
         self.filter_size_3 = 3
 
         self.stride = 1
-
+        #a=0.1
         # Two separate filters with proper initialization
-        filter_3 = torch.empty(out_channels, in_channels, self.filter_size_3)
-        torch.nn.init.kaiming_uniform_(
-            filter_3, a=0.1
-        )  # Scaled-down initialization for filter 2
-        self.filter_3 = nn.Parameter(filter_3)
+        #filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
+        #torch.nn.init.kaiming_uniform_(
+         #   filter_2, a=1.0
+        #)  # Scaled-down initialization for filter 2
+        #self.filter_2 = nn.Parameter(filter_2)
 
+        self.filter_3=nn.Parameter(torch.randn(out_channels, in_channels, self.filter_size_3))
         # Bias terms
         if bias:
             self.bias_3 = nn.Parameter(torch.randn(out_channels))
@@ -368,6 +369,7 @@ class MyConv1d_3(nn.Module):
         # Apply convolution separately on patch size 3 (offset input by 2)
         # Concatenate along the last dimension
         return out
+    
 
 
 class MyLinear(nn.Module):
