@@ -46,7 +46,8 @@ def init_data_mixed(args):
             rule_sequence_type=args.rule_sequence_type, # type of rule sequence
             s_2=2,
             s_3=3,       # size of the low-level representations
-            num_layers=args.num_layers,       # number of levels in the hierarchy
+            num_layers=args.num_layers,
+            max_data=args.max_data,       # number of levels in the hierarchy
             seed_rules=args.seed_rules,
             seed_sample=args.seed_sample,
             train_size=args.train_size,
