@@ -385,6 +385,7 @@ class MixedRandomHierarchyModel(Dataset):
             input_format='onehot',
             replacement=False,
             whitening=0,
+            padding=0,
             transform=None    ):
 
         v=num_features
@@ -455,15 +456,18 @@ class MixedRandomHierarchyModel(Dataset):
             self.features = self.features.permute(0, 2, 1)
             batch_size, num_features, input_size = self.features.shape
             print(input_size)
-            target_size = 9
-            if input_size < target_size:
-                pad_size = target_size - input_size
-                pad_tensor = torch.zeros(batch_size, num_features, pad_size, device=self.features.device, dtype=self.features.dtype)
-                self.features = torch.cat([self.features, pad_tensor], dim=2)  # Stack zeros at the end along the last dimension
-            sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
-            sum_of_squares = torch.round(sum_of_squares).to(torch.int)
-            sum_of_squares = sum_of_squares.squeeze()
-            print(sum_of_squares)
+            
+            if padding:
+            
+                target_size = 9
+                if input_size < target_size:
+                    pad_size = target_size - input_size
+                    pad_tensor = torch.zeros(batch_size, num_features, pad_size, device=self.features.device, dtype=self.features.dtype)
+                    self.features = torch.cat([self.features, pad_tensor], dim=2)  # Stack zeros at the end along the last dimension
+                sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
+                sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+                sum_of_squares = sum_of_squares.squeeze()
+                print(sum_of_squares)
 
         elif 'long' in input_format:
             self.features = self.features.long() + 1
