@@ -405,11 +405,11 @@ class MixedRandomHierarchyModel(Dataset):
         self.rules = sample_mixed_rules(num_features,num_classes,m_2,m_3,s_2,s_3,num_layers,seed_rules)
         max_rule_types = int(np.floor((3**num_layers-1)/2))
 
-        if rule_sequence_type == 1:
+        if self.rule_sequence_type == 1:
             rule_types=[i % 2 for i in range(max_rule_types)]
-        elif rule_sequence_type == 2:
+        elif self.rule_sequence_type == 2:
             rule_types=[(i+1) % 2 for i in range(max_rule_types)]
-        elif rule_sequence_type == 3:
+        elif self.rule_sequence_type == 3:
             rule_types=[1 for i in range(max_rule_types)]
 
         #tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
@@ -424,9 +424,9 @@ class MixedRandomHierarchyModel(Dataset):
                 print(max_data)
                 print(train_size+test_size)
                 samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
-
+            print(self.rule_sequence_type)
             self.features, self.labels = sample_data_from_indices_fixed_tree(
-                samples, self.rules,rule_types,num_classes,m_2,m_3,rule_sequence_type
+                samples, self.rules,rule_types,num_classes,m_2,m_3,self.rule_sequence_type
             )
             
 
@@ -454,6 +454,7 @@ class MixedRandomHierarchyModel(Dataset):
                 self.features = (self.features - 1./num_features) * inv_sqrt_norm
             self.features = self.features.permute(0, 2, 1)
             batch_size, num_features, input_size = self.features.shape
+            print(input_size)
             target_size = 9
             if input_size < target_size:
                 pad_size = target_size - input_size
