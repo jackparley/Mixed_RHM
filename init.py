@@ -53,7 +53,8 @@ def init_data_mixed(args):
             train_size=args.train_size,
             test_size=test_size,
             input_format=args.input_format,
-            whitening=args.whitening   
+            whitening=args.whitening,
+            padding=args.padding  
             )
     else:
         raise ValueError('dataset argument is invalid!')
