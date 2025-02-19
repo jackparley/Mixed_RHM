@@ -428,10 +428,7 @@ class MixedRandomHierarchyModel(Dataset):
             self.features, self.labels = sample_data_from_indices_fixed_tree(
                 samples, self.rules,rule_types,num_classes,m_2,m_3,rule_sequence_type
             )
-            sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
-            sum_of_squares = torch.round(sum_of_squares).to(torch.int)
-            sum_of_squares = sum_of_squares.squeeze()
-            print(sum_of_squares)
+            
 
         else:
             torch.manual_seed(seed_sample)
@@ -462,6 +459,10 @@ class MixedRandomHierarchyModel(Dataset):
                 pad_size = target_size - input_size
                 pad_tensor = torch.zeros(batch_size, num_features, pad_size, device=self.features.device, dtype=self.features.dtype)
                 self.features = torch.cat([self.features, pad_tensor], dim=2)  # Stack zeros at the end along the last dimension
+            sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
+            sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+            sum_of_squares = sum_of_squares.squeeze()
+            print(sum_of_squares)
 
         elif 'long' in input_format:
             self.features = self.features.long() + 1
