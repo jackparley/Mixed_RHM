@@ -416,14 +416,14 @@ class MixedRandomHierarchyModel(Dataset):
         
         if not replacement:
             if train_size == -1:
-                samples = torch.arange( max_data)
+                samples = torch.arange( self.max_data)
 
             else:
                 #test_size = min( test_size, max_data-train_size)
                 random.seed(seed_sample)
-                print(max_data)
+                print(self.max_data)
                 print(train_size+test_size)
-                samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
+                samples = torch.tensor( random.sample( range(self.max_data), train_size+test_size))
             print(self.rule_sequence_type)
             self.features, self.labels = sample_data_from_indices_fixed_tree(
                 samples, self.rules,rule_types,num_classes,m_2,m_3,self.rule_sequence_type
