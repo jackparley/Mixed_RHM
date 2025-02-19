@@ -434,7 +434,7 @@ class MixedRandomHierarchyModel(Dataset):
         else:
             torch.manual_seed(seed_sample)
             if train_size == -1:
-                labels = torch.randint(low=0, high=num_classes, size=(max_data + test_size,))
+                labels = torch.randint(low=0, high=num_classes, size=(self.max_data + test_size,))
             else:
                 labels = torch.randint(low=0, high=num_classes, size=(train_size + test_size,))
             self.features, self.labels = sample_data_from_labels_fixed_tree(labels, self.rules,rule_types)
