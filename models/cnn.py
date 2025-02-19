@@ -778,7 +778,6 @@ class hCNN_inside(nn.Module):
 
     def forward(self, x):
         x, sum_of_squares = self.hidden(x)
-        print(sum_of_squares)
         x = x[torch.arange(x.shape[0]), :, sum_of_squares-4]  # Dynamic indexing
         x = x @ self.readout / self.norm
         return x
