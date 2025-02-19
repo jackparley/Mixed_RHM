@@ -43,7 +43,7 @@ def init_data_mixed(args):
             num_features=args.num_features,     # vocabulary size
             num_classes=args.num_classes,      # number of classes
             fraction_rules=args.fraction_rules,     # number of synonymic low-level representations (multiplicity)
-            rule_sequence_type=1,
+            rule_sequence_type=args.rule_sequence_type, # type of rule sequence
             s_2=2,
             s_3=3,       # size of the low-level representations
             num_layers=args.num_layers,       # number of levels in the hierarchy
