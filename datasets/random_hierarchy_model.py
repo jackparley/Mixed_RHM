@@ -421,11 +421,17 @@ class MixedRandomHierarchyModel(Dataset):
             else:
                 #test_size = min( test_size, max_data-train_size)
                 random.seed(seed_sample)
+                print(max_data)
+                print(train_size+test_size)
                 samples = torch.tensor( random.sample( range(max_data), train_size+test_size))
 
             self.features, self.labels = sample_data_from_indices_fixed_tree(
                 samples, self.rules,rule_types,num_classes,m_2,m_3,rule_sequence_type
             )
+            sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
+            sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+            sum_of_squares = sum_of_squares.squeeze()
+            print(sum_of_squares)
 
         else:
             torch.manual_seed(seed_sample)
