@@ -529,11 +529,11 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             # Apply the mask to set elements to zero
             self.features[mask.unsqueeze(1).expand_as(self.features)] = 0
             batch_size, num_features, input_size = self.features.shape
-            print(input_size)
+            #print(input_size)
             sum_of_squares = torch.sum(self.features**2, dim=(1, 2), keepdim=True)
             sum_of_squares = torch.round(sum_of_squares).to(torch.int)
             sum_of_squares = sum_of_squares.squeeze()
-            print(sum_of_squares)
+            #print(sum_of_squares)
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
