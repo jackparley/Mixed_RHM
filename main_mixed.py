@@ -174,6 +174,7 @@ parser.add_argument('--max_data', type=int, help='maximum number of data points'
 parser.add_argument("--seed_sample", type=int, help='seed for the sampling of train and testset')
 parser.add_argument('--input_format', type=str, default='onehot')
 parser.add_argument('--whitening', type=int, default=0)
+parser.add_argument('--padding', type=int, default=0)
 '''
 	ARCHITECTURE ARGS
 '''
