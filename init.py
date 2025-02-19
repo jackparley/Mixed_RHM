@@ -57,8 +57,22 @@ def init_data_mixed(args):
             padding=args.padding,  
             replacement=args.replacement
             )
-    else:
-        raise ValueError('dataset argument is invalid!')
+    elif args.dataset=='mixed_rhm_varying_tree':
+        test_size = 20000
+        dataset=datasets.MixedRandomHierarchyModel_varying_tree(
+            num_features=args.num_features,     # vocabulary size
+            num_classes=args.num_classes,      # number of classes
+            fraction_rules=args.fraction_rules,     # number of synonymic low-level representations (multiplicity)
+            s_2=2,
+            s_3=3,       # size of the low-level representations
+            num_layers=args.num_layers,
+            seed_rules=args.seed_rules,
+            seed_sample=args.seed_sample,
+            train_size=args.train_size,
+            test_size=test_size,
+            input_format=args.input_format,
+            whitening=args.whitening            )
+        
 
     trainset = torch.utils.data.Subset(dataset, range(args.train_size))
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
