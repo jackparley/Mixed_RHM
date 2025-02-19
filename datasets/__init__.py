@@ -1,3 +1,4 @@
 import torch
 from .random_hierarchy_model import MixedRandomHierarchyModel
+from .random_hierarchy_model import MixedRandomHierarchyModel_varying_tree
 #from .mixed_random_hierarchy_model import MixedRandomHierarchyModel_2
