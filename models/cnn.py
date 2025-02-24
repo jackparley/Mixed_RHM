@@ -820,7 +820,7 @@ class MyConv1d_ell_2(nn.Module):
         for length in range(self.min_d, self.max_d + 1):
             kk_0 = self.kk_0_dict[length]
             # print(kk_0)
-            kk_0 = torch.tensor(kk_0)  # Shape: (num_kk,)
+            kk_0 = torch.tensor(kk_0, dtype=torch.int)  # Shape: (num_kk,)
             # print(out_d.shape)
             dp_1 = kk_0  # Shape: (num_kk,)
             dp_2 = length - kk_0  # Shape: (num_kk,)
