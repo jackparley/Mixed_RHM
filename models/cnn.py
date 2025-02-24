@@ -849,19 +849,23 @@ class MyConv1d_ell_2(nn.Module):
 
             # Replicate full_filter across a new dimension for the filters.
             stacked_filters = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters).clone()
-            filter_2_expanded=full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters).clone()
-
-            # Create an index for the num_filters dimension.
+            # Create filter indices for the last dimension.
             filter_indices = torch.arange(num_filters)
 
-            # Now, update the specified kernel positions for all filters in parallel.
-            stacked_filters[:,:, indices[0, :], filter_indices] = filter_2_expanded[:,:,0]
-            stacked_filters[:,:, indices[1, :], filter_indices] = filter_2_expanded[:,:,1]
+            # Expand filter_2 slices to shape [7,6,num_filters]
+            filter_2_slice0 = self.filter_2[:, :, 0].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters)
+            filter_2_slice1 = self.filter_2[:, :, 1].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters)
+
+            # Update the positions specified by indices for each filter.
+            stacked_filters[:, :, indices[0, :], filter_indices] = filter_2_slice0
+            stacked_filters[:, :, indices[1, :], filter_indices] = filter_2_slice1
+
+            # Reshape the stacked filters to shape [num_filters, 7, 6, 10]
 
             stacked_filters=stacked_filters.permute(3,0,1,2)
-            
 
-            out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride) 
+
+            out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
 
 
             pairs_0 = self.pairs_0_dict[length]
