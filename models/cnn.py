@@ -713,10 +713,10 @@ def nested_ranges_as_tensor(i, j, min_split):
 
     # Convert to a tensor
     if pairs:
-        return torch.tensor(pairs)  # Shape: [num_pairs, 2]
+        return torch.tensor(pairs,dtype=torch.int)  # Shape: [num_pairs, 2]
     else:
         return torch.empty(
-            (0, 2), dtype=torch.int64
+            (0, 2), dtype=torch.int
         )  # Handle case where no pairs exist
 
 def manual_conv1d_stacked(input_tensor, filters, stride):
@@ -870,7 +870,7 @@ class MyConv1d_ell_2(nn.Module):
             #Ternary filters
 
             pairs_0 = self.pairs_0_dict[length]
-            pairs_0 = torch.tensor(pairs_0, dtype=torch.int)  # Shape: (num_kk,2)
+            #pairs_0 = torch.tensor(pairs_0, dtype=torch.int)  # Shape: (num_kk,2)
             full_filter = torch.zeros(
                 self.filter_3.shape[0],  # Out channels
                 self.filter_3.shape[1],  # In channels
