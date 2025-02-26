@@ -65,6 +65,7 @@ def run( args):
     window_size = 5
     test_acc_window = collections.deque(maxlen=window_size)
     step_window = collections.deque(maxlen=window_size)
+    stop_training = False  # Flag to signal when to stop training
 
     for epoch in range(args.max_epochs):
 
@@ -119,6 +120,7 @@ def run( args):
                                 train_loss, train_acc = measures.test(model, train_loader, args.device)
                                 save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
                                 dynamics.append(save_dict)
+                                stop_training = True  # Set flag to stop both loops
                                 break  # Stop training
 
 
@@ -143,6 +145,8 @@ def run( args):
                               #  pickle.dump(output, handle)
                         save_ckpt = next(save_ckpts)
 
+        if stop_training:  # Break outer loop
+            break
 
         if (running_loss/(batch_idx+1)) <= args.loss_threshold:
 
