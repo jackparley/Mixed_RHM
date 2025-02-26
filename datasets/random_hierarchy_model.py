@@ -28,21 +28,6 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
         x3 = index // m2 + 1
         x4 = index % m2 + 1
         choice = [x1, x2, x3, x4]
-    elif L == 2 and rule_sequence_type == 3:
-        bases = [n, m3, m3, m3, m3]  # Alternating base sizes
-        index -= 1  # Convert to 0-based index
-        choice = []
-
-        # Compute the total number of possibilities
-        total_combinations = 1
-        for base in bases:
-            total_combinations *= base
-
-        # Extract choices one by one
-        for base in bases:
-            total_combinations //= base  # Reduce divisor dynamically
-            choice.append(index // total_combinations + 1)
-            index %= total_combinations  # Reduce index to the remainder
     elif L == 2 and rule_sequence_type == 2:
         bases = [n, m3, m2, m3, m2]  # Alternating base sizes
         index -= 1  # Convert to 0-based index
@@ -58,6 +43,86 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             total_combinations //= base  # Reduce divisor dynamically
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
+    elif L == 2 and rule_sequence_type == 3:
+        bases = [n, m2, m2, m2]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+    elif L == 2 and rule_sequence_type == 4:
+        bases = [n, m2, m3, m3]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+
+    elif L == 2 and rule_sequence_type == 5:
+        bases = [n, m3, m2, m2,m2]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+
+    elif L == 2 and rule_sequence_type == 6:
+        bases = [n, m3, m3, m2,m3]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+
+
+    elif L == 2 and rule_sequence_type == 7:
+        bases = [n, m3, m3, m3, m3]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+    
 
     elif L == 3:
         bases = [n, m2, m3, m2, m3, m2, m3, m2, m3]  # Alternating base sizes
@@ -495,7 +560,11 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
 
         torch.manual_seed(seed_sample)
         labels = torch.randint(low=0, high=num_classes, size=(train_size + test_size,))
-        d_max = 9
+        if num_layers == 2:
+            d_max = 9
+        elif num_layers == 3:
+            d_max = 27
+        
         self.features, self.labels = sample_data_from_labels_varying_tree(
             labels, self.rules, num_features, d_max
         )
@@ -610,7 +679,15 @@ class MixedRandomHierarchyModel(Dataset):
         elif self.rule_sequence_type == 2:
             rule_types = [(i + 1) % 2 for i in range(max_rule_types)]
         elif self.rule_sequence_type == 3:
-            rule_types = [1 for i in range(max_rule_types)]
+            rule_types = [0,0,0]
+        elif self.rule_sequence_type == 4:
+            rule_types = [0,1,1]
+        elif self.rule_sequence_type == 5:
+            rule_types = [1,0,0,0]
+        elif self.rule_sequence_type == 6:
+            rule_types = [1,1,0,1]
+        elif self.rule_sequence_type == 7:
+            rule_types = [1,1,1,1]
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
