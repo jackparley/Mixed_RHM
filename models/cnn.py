@@ -1149,7 +1149,7 @@ class MyConv1d_ell_2(nn.Module):
         )
 
         l = 2
-        self.n = 9
+        self.n = 27
         self.min_d = 2**l
         self.max_d = 3 ** (l)
         self.min_split = 2 ** (l - 1)
