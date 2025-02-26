@@ -114,6 +114,7 @@ def run( args):
                             print(f"Variation: {variation}")
                             var_step= step - min_step
                             print(f"Step window contents: {list(step_window)}")
+                            print(f"Test acc window contents: {list(test_acc_window)}")
                             print(f"Step variation: {var_step}")
                             if variation < 0.1 and var_step>5000:  # If variation is within 5%
                                 print("Training stopped: Asymptotic behavior detected.")
