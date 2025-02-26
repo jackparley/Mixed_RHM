@@ -22,6 +22,7 @@ import datasets
 import models
 import init
 import measures
+import collections
 
 def run( args):
 
@@ -60,6 +61,11 @@ def run( args):
          #   pickle.dump(args, handle)
           #  pickle.dump(output, handle)
 
+    
+    window_size = 10
+    test_acc_window = collections.deque(maxlen=window_size)
+    step_window = collections.deque(maxlen=window_size)
+
     for epoch in range(args.max_epochs):
 
         model.train()
@@ -95,6 +101,26 @@ def run( args):
                         train_loss, train_acc = measures.test(model, train_loader, args.device)
                         save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
                         dynamics.append(save_dict)
+
+                         # Store (1 - test_acc) in the deque
+                        test_acc_window.append(1 - test_acc)
+                        step_window.append(step)
+                        if step>1e4:
+                            max_val = max(test_acc_window)
+                            min_val = min(test_acc_window)
+                            max_step = max(step_window)
+                            min_step = min(step_window)
+                            variation = (max_val - min_val) / max_val if max_val != 0 else 0
+                            print(f"Variation: {variation}")
+                            var_step= max_step - min_step
+                            print(f"Step variation: {var_step}")
+                            if variation < 0.05 and var_step>5000:  # If variation is within 5%
+                                print("Training stopped: Asymptotic behavior detected.")
+                                train_loss, train_acc = measures.test(model, train_loader, args.device)
+                                save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                dynamics.append(save_dict)
+                                break  # Stop training
+
 
                         #if args.checkpoints:
                          #   output = {
