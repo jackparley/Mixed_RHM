@@ -114,7 +114,7 @@ def run( args):
                             print(f"Variation: {variation}")
                             var_step= max_step - min_step
                             print(f"Step variation: {var_step}")
-                            if variation < 0.05 and var_step>5000:  # If variation is within 5%
+                            if variation < 0.12 and var_step>5000:  # If variation is within 5%
                                 print("Training stopped: Asymptotic behavior detected.")
                                 train_loss, train_acc = measures.test(model, train_loader, args.device)
                                 save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
