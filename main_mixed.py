@@ -62,7 +62,7 @@ def run( args):
           #  pickle.dump(output, handle)
 
     
-    window_size = 10
+    window_size = 5
     test_acc_window = collections.deque(maxlen=window_size)
     step_window = collections.deque(maxlen=window_size)
 
