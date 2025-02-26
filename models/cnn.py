@@ -830,9 +830,9 @@ class MyConv1d_ell_2(nn.Module):
                 length * self.n_span,  # Kernel size
                 device=self.filter_2.device,
             )
-            out_d = torch.zeros(
-                x.shape[0], self.filter_2.shape[0], self.n - length + 1, device=x.device
-            )
+            #out_d = torch.zeros(
+             #   x.shape[0], self.filter_2.shape[0], self.n - length + 1, device=x.device
+            #)
 
             # Compute indices for efficient summation
             dp_1 = kk_0
@@ -845,27 +845,27 @@ class MyConv1d_ell_2(nn.Module):
                 [dp_1 - self.min_split, self.n_span * dp_1 + dp_2 - self.min_split], dim=1
             ).permute(1,0)  # Shape: (2,num_kk)
 
-            num_filters = indices.shape[1]
+            num_filters_2 = indices.shape[1]
 
             # Replicate full_filter across a new dimension for the filters.
-            stacked_filters = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters).clone()
+            stacked_filters_2 = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters_2).clone()
             # Create filter indices for the last dimension.
-            filter_indices = torch.arange(num_filters)
+            filter_indices = torch.arange(num_filters_2)
 
             # Expand filter_2 slices to shape [7,6,num_filters]
-            filter_2_slice0 = self.filter_2[:, :, 0].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters)
-            filter_2_slice1 = self.filter_2[:, :, 1].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters)
+            filter_2_slice0 = self.filter_2[:, :, 0].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters_2)
+            filter_2_slice1 = self.filter_2[:, :, 1].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters_2)
 
             # Update the positions specified by indices for each filter.
-            stacked_filters[:, :, indices[0, :], filter_indices] = filter_2_slice0
-            stacked_filters[:, :, indices[1, :], filter_indices] = filter_2_slice1
+            stacked_filters_2[:, :, indices[0, :], filter_indices] = filter_2_slice0/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
+            stacked_filters_2[:, :, indices[1, :], filter_indices] = filter_2_slice1/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
 
-            # Reshape the stacked filters to shape [num_filters, 7, 6, 10]
+            # Reshape the stacked filters to shape [num_filters_2, 7, 6, 10]
 
-            stacked_filters=stacked_filters.permute(3,0,1,2)
+            stacked_filters_2=stacked_filters_2.permute(3,0,1,2)
 
 
-            out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
+            #out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
             
             #Ternary filters
 
@@ -893,27 +893,30 @@ class MyConv1d_ell_2(nn.Module):
                 1, 0
             )  # Shape: (3,num_kk)
 
-            num_filters = indices.shape[1]
+            num_filters_3 = indices.shape[1]
 
             # Replicate full_filter across a new dimension for the filters.
-            stacked_filters = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters).clone()
+            stacked_filters_3 = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters_3).clone()
             # Create filter indices for the last dimension.
-            filter_indices = torch.arange(num_filters)
+            filter_indices = torch.arange(num_filters_3)
 
             # Expand filter_2 slices to shape [7,6,num_filters]
-            filter_3_slice0 = self.filter_3[:, :, 0].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters)
-            filter_3_slice1 = self.filter_3[:, :, 1].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters)
-            filter_3_slice2 = self.filter_3[:, :, 2].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters)
+            filter_3_slice0 = self.filter_3[:, :, 0].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
+            filter_3_slice1 = self.filter_3[:, :, 1].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
+            filter_3_slice2 = self.filter_3[:, :, 2].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
 
             # Update the positions specified by indices for each filter.
-            stacked_filters[:, :, indices[0, :], filter_indices] = filter_3_slice0
-            stacked_filters[:, :, indices[1, :], filter_indices] = filter_3_slice1
-            stacked_filters[:, :, indices[2, :], filter_indices] = filter_3_slice2
+            stacked_filters_3[:, :, indices[0, :], filter_indices] = filter_3_slice0/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+            stacked_filters_3[:, :, indices[1, :], filter_indices] = filter_3_slice1/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+            stacked_filters_3[:, :, indices[2, :], filter_indices] = filter_3_slice2/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
 
             # Reshape the stacked filters to shape [num_filters, 7, 6, 10]
 
-            stacked_filters=stacked_filters.permute(3,0,1,2)
-            out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+            stacked_filters_3=stacked_filters_3.permute(3,0,1,2) # Shape: (num_filters_3, out_channels, in_channels, kernel_size)
+            
+            stacked_filters = torch.cat((stacked_filters_2, stacked_filters_3), dim=0)
+            
+            out_d=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)
 
             pad = torch.zeros(
                 out_d.shape[0],
