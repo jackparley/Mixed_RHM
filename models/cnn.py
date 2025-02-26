@@ -1453,8 +1453,33 @@ class MyConv1d_ell_2_sequential(nn.Module):
 
         return interleaved_out, sum_of_squares  # Return tuple
 
-
 class hCNN_inside(nn.Module):
+    def __init__(self, in_channels, nn_dim, out_channels, bias=False, norm="std"):
+        super().__init__()
+
+        self.hidden = nn.Sequential(
+            ComputeSumOfSquares(),
+            MyConv1d_ell_1(in_channels, nn_dim, bias=bias),
+            TupleReLU(),  # Use custom ReLU that handles tuples
+            MyConv1d_ell_2(nn_dim, nn_dim, bias=bias),
+            TupleReLU(),  # Again, use custom ReLU
+            MyConv1d_ell_3_last(nn_dim, nn_dim, bias=bias),
+            TupleReLU(),  # Again, use custom ReLU
+        )
+        self.min_d_last=8
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        x, sum_of_squares = self.hidden(x)
+        x = x[torch.arange(x.shape[0]), :, sum_of_squares - self.min_d_last]  # Dynamic indexing
+        x = x @ self.readout / self.norm
+        return x
+
+class hCNN_inside_L_2(nn.Module):
     def __init__(self, in_channels, nn_dim, out_channels, bias=False, norm="std"):
         super().__init__()
 
