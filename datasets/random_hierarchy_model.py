@@ -185,6 +185,50 @@ def sample_data_from_indices_fixed_tree(
     return concatenated_features, labels
 
 
+
+def sample_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
+    random.seed(seed)
+
+    # Define a callable for the defaultdict to return empty tensors
+    def tensor_default():
+        return torch.empty(0)
+
+    tuples_2 = list(product(*[range(v) for _ in range(s_2)]))
+    tuples_3 = list(product(*[range(v) for _ in range(s_3)]))
+
+    # Define the defaultdict structure
+    rules = defaultdict(tensor_default)
+
+    # Initialize the grammar with sampled tensors
+    binary_rules = torch.tensor(random.sample(tuples_2, n * m_2)).reshape(n, m_2, s_2)
+    ternary_rules = torch.tensor(random.sample(tuples_3, n * m_3)).reshape(n, m_3, s_3)
+
+    # Pad binary rules with the fake symbol (integer v)
+    padding = torch.full((n, m_2, s_3 - s_2), v)
+    padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+    # Stack binary and ternary rules on top of each other
+    rules[0] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+    for i in range(1, L):
+        binary_rules = torch.tensor(random.sample(tuples_2, v * m_2)).reshape(v, m_2, s_2)
+        ternary_rules = torch.tensor(random.sample(tuples_3, v * m_3)).reshape(v, m_3, s_3)
+
+        # Pad binary rules with the fake symbol (integer v)
+        padding = torch.full((v, m_2, s_3 - s_2), v)
+        padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+        # Stack binary and ternary rules on top of each other
+        rules[i] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+    # Add the fake symbol with rules [v, v, v] at each layer
+    for l in range(L):
+        fake_rules = torch.full((1, m_2 + m_3, 3), v)
+        rules[l] = torch.cat((rules[l], fake_rules), dim=0)
+
+    return rules
+
+
 def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     random.seed(seed)
 
@@ -249,6 +293,62 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
         all_features.append(features)
     concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
     return concatenated_features, labels
+
+
+def create_probabilities(m_2, m_3, L):
+    probabilities = {}
+    for l in range(L):
+        prob = torch.cat((
+            torch.full((m_2,), 1 / (2 * m_2)),
+            torch.full((m_3,), 1 / (2 * m_3))
+        ))
+        probabilities[l] = prob
+    return probabilities
+
+
+def sample_data_from_labels_varying_tree_tensorized(labels, rules, probability,num_features,d_max):
+    """
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
+
+    Args:
+        labels: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
+        rules: A dictionary containing the rules for each level of the hierarchy.
+        probability: A dictionary containing the distribution of the rules for each level of the hierarchy.
+
+    Returns:
+        A tuple containing the inputs and outputs of the model.
+    """
+    L = len(rules)  # Number of levels in the hierarchy
+
+    features = labels
+
+    for l in range(L):
+        chosen_rule = torch.multinomial(
+            probability[l], features.numel(), replacement=True
+        ).reshape(
+            features.shape
+        )  # Choose a rule for each variable in the current level according to probability[l]
+        features = rules[l][features, chosen_rule].flatten(
+            start_dim=1
+        )  # Apply the chosen rule to each variable in the current level
+    mask = features == num_features
+
+    # Count the number of fake symbols in each row
+    num_fake_symbols = mask.sum(dim=1)
+
+    # Create a tensor to hold the final result
+    result = torch.zeros_like(features)
+    num_data = features.shape[0]    # Number of data points
+    # Remove the fake symbols and keep the original order of the rest of the elements
+    real_features = [features[i, ~mask[i]] for i in range(num_data)]
+    #print(real_features)
+    # Fill the result tensor with real features and append fake symbols at the end
+    for i in range(num_data):
+        num_real_symbols = d_max - num_fake_symbols[i]
+        result[i, :num_real_symbols] = real_features[i]
+        result[i, num_real_symbols:] = num_features
+
+    return result, labels
 
 
 def sample_data_from_labels_fixed_tree(labels, rules, rule_types):
@@ -551,10 +651,9 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
 
-        self.rules = sample_mixed_rules(
+        self.rules = sample_padded_rules(
             num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
         )
-        max_rule_types = int(np.floor((3**num_layers - 1) / 2))
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
@@ -564,9 +663,11 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             d_max = 9
         elif num_layers == 3:
             d_max = 27
+        elif num_layers == 4:
+            d_max = 81
         
-        self.features, self.labels = sample_data_from_labels_varying_tree(
-            labels, self.rules, num_features, d_max
+        self.features, self.labels = sample_data_from_labels_varying_tree_tensorized(
+            labels, self.rules, create_probabilities(m_2, m_3, num_layers),num_features,d_max
         )
 
         if "onehot" not in input_format:
