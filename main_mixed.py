@@ -63,7 +63,7 @@ def run( args):
 
     
     window_size = 5
-    test_acc_window = collections.deque(maxlen=window_size)
+    test_loss_window = collections.deque(maxlen=window_size)
     step_window = collections.deque(maxlen=window_size)
     stop_training = False  # Flag to signal when to stop training
 
@@ -104,26 +104,41 @@ def run( args):
                         dynamics.append(save_dict)
 
                          # Store (1 - test_acc) in the deque
-                        test_acc_window.append(1 - test_acc)
+                        test_loss_window.append(test_loss)
                         step_window.append(step)
-                        if step>1e4:
-                            max_val = max(test_acc_window)
-                            min_val = min(test_acc_window)
+
+                        if step > 1e2:
+                            max_val = max(test_loss_window)
+                            min_val = min(test_loss_window)
                             min_step = min(step_window)
                             variation = (max_val - min_val) / max_val if max_val != 0 else 0
                             print(f"Variation: {variation}")
-                            var_step= step - min_step
-                            print(f"Step window contents: {list(step_window)}")
-                            print(f"Test acc window contents: {list(test_acc_window)}")
-                            print(f"Step variation: {var_step}")
-                            if variation < 0.1 and var_step>5000:  # If variation is within 5%
-                                print("Training stopped: Asymptotic behavior detected.")
-                                train_loss, train_acc = measures.test(model, train_loader, args.device)
-                                save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
-                                dynamics.append(save_dict)
-                                stop_training = True  # Set flag to stop both loops
-                                break  # Stop training
+                            var_step = step - min_step
 
+                            # Compute the slope of the test loss trend
+                            if len(test_loss_window) ==window_size:  # Ensure enough points for trend detection
+                                steps_array = np.array(list(step_window))
+                                losses_array = np.array(list(test_loss_window))
+
+                                # Fit a linear regression line
+                                slope, _ = np.polyfit(steps_array, losses_array, 1)  
+
+                                # Check the consistency of the increase
+                                increasing_steps = sum(
+                                    losses_array[i] > losses_array[i - 1] for i in range(1, len(losses_array))
+                                )
+                                consistency_ratio = increasing_steps / len(losses_array)
+
+                                print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
+
+                                if (variation < 0.1 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.7):  
+                                    # Stop if plateauing or consistently increasing (more than 70% of the time)
+                                    print("Training stopped: Loss plateau or consistently increasing trend detected.")
+                                    train_loss, train_acc = measures.test(model, train_loader, args.device)
+                                    save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                    dynamics.append(save_dict)
+                                    stop_training = True  # Set flag to stop both loops
+                                    break  # Stop training
 
                         #if args.checkpoints:
                          #   output = {
