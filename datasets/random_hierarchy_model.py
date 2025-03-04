@@ -139,6 +139,21 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             total_combinations //= base  # Reduce divisor dynamically
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
+    elif L == 4:
+        bases = [n, m2, m3, m2, m3, m2, m3, m2, m3,m2,m3,m2,m3,m2,m3,m2,m3,m2,m3,m2,m3,m2]  # Alternating base sizes
+        index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
 
     return choice
 
