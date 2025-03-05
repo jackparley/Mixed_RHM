@@ -112,11 +112,8 @@ def run( args):
                             min_val = min(test_loss_window)
                             min_step = min(step_window)
                             variation = (max_val - min_val) / max_val if max_val != 0 else 0
-                            std_dev = np.std(list(test_loss_window))  # Compute standard deviation of loss
-                            mean_loss = np.mean(list(test_loss_window))  # Compute mean loss
                             # Compute normalized fluctuation (Coefficient of Variation)
-                            cv = std_dev / mean_loss if mean_loss != 0 else 0
-                            print(f"Variation: {variation}, Std Dev: {std_dev}, CV: {cv}")
+                            print(f"Variation: {variation}")
                             var_step = step - min_step
 
                             # Compute the slope of the test loss trend
@@ -135,9 +132,7 @@ def run( args):
 
                                 print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
                                     # Condition to detect a noisy plateau
-    noisy_plateau = (0.1 < variation < 0.25) and (cv > 0.05) and (consistency_ratio < 0.5)
-
-                                if (variation < 0.1 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.7):  
+                                if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
                                     # Stop if plateauing or consistently increasing (more than 70% of the time)
                                     print("Training stopped: Loss plateau or consistently increasing trend detected.")
                                     train_loss, train_acc = measures.test(model, train_loader, args.device)
