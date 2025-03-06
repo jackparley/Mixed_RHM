@@ -75,7 +75,7 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             index %= total_combinations  # Reduce index to the remainder
 
     elif L == 2 and rule_sequence_type == 5:
-        bases = [n, m3, m2, m2,m2]  # Alternating base sizes
+        bases = [n, m3, m2, m2, m2]  # Alternating base sizes
         index -= 1  # Convert to 0-based index
         choice = []
 
@@ -91,7 +91,7 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             index %= total_combinations  # Reduce index to the remainder
 
     elif L == 2 and rule_sequence_type == 6:
-        bases = [n, m3, m3, m2,m3]  # Alternating base sizes
+        bases = [n, m3, m3, m2, m3]  # Alternating base sizes
         index -= 1  # Convert to 0-based index
         choice = []
 
@@ -105,7 +105,6 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             total_combinations //= base  # Reduce divisor dynamically
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
-
 
     elif L == 2 and rule_sequence_type == 7:
         bases = [n, m3, m3, m3, m3]  # Alternating base sizes
@@ -122,7 +121,6 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             total_combinations //= base  # Reduce divisor dynamically
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
-    
 
     elif L == 3:
         bases = [n, m2, m3, m2, m3, m2, m3, m2, m3]  # Alternating base sizes
@@ -140,7 +138,30 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
             choice.append(index // total_combinations + 1)
             index %= total_combinations  # Reduce index to the remainder
     elif L == 4:
-        bases = [n, m2, m3, m2, m3, m2, m3, m2, m3,m2,m3,m2,m3,m2,m3,m2,m3,m2,m3,m2,m3,m2]  # Alternating base sizes
+        bases = [
+            n,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+            m3,
+            m2,
+        ]  # Alternating base sizes
         index -= 1  # Convert to 0-based index
         choice = []
 
@@ -200,7 +221,6 @@ def sample_data_from_indices_fixed_tree(
     return concatenated_features, labels
 
 
-
 def sample_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     random.seed(seed)
 
@@ -226,8 +246,12 @@ def sample_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     rules[0] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
 
     for i in range(1, L):
-        binary_rules = torch.tensor(random.sample(tuples_2, v * m_2)).reshape(v, m_2, s_2)
-        ternary_rules = torch.tensor(random.sample(tuples_3, v * m_3)).reshape(v, m_3, s_3)
+        binary_rules = torch.tensor(random.sample(tuples_2, v * m_2)).reshape(
+            v, m_2, s_2
+        )
+        ternary_rules = torch.tensor(random.sample(tuples_3, v * m_3)).reshape(
+            v, m_3, s_3
+        )
 
         # Pad binary rules with the fake symbol (integer v)
         padding = torch.full((v, m_2, s_3 - s_2), v)
@@ -281,9 +305,7 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
         for layer in range(0, L):  # 1 to 3 (3 layers)
             new_symbols = []
             for symbol in current_symbols:
-                rule_type = torch.randint(
-                    low=0, high=2, size=(1,)
-                ).item()
+                rule_type = torch.randint(low=0, high=2, size=(1,)).item()
                 # print(rule_type)
                 rule_tensor = rules[layer][rule_type]
                 chosen_rule = torch.randint(
@@ -313,15 +335,16 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
 def create_probabilities(m_2, m_3, L):
     probabilities = {}
     for l in range(L):
-        prob = torch.cat((
-            torch.full((m_2,), 1 / (2 * m_2)),
-            torch.full((m_3,), 1 / (2 * m_3))
-        ))
+        prob = torch.cat(
+            (torch.full((m_2,), 1 / (2 * m_2)), torch.full((m_3,), 1 / (2 * m_3)))
+        )
         probabilities[l] = prob
     return probabilities
 
 
-def sample_data_from_labels_varying_tree_tensorized(labels, rules, probability,num_features,d_max):
+def sample_data_from_labels_varying_tree_tensorized(
+    labels, rules, probability, num_features, d_max
+):
     """
     Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
 
@@ -353,10 +376,10 @@ def sample_data_from_labels_varying_tree_tensorized(labels, rules, probability,n
 
     # Create a tensor to hold the final result
     result = torch.zeros_like(features)
-    num_data = features.shape[0]    # Number of data points
+    num_data = features.shape[0]  # Number of data points
     # Remove the fake symbols and keep the original order of the rest of the elements
     real_features = [features[i, ~mask[i]] for i in range(num_data)]
-    #print(real_features)
+    # print(real_features)
     # Fill the result tensor with real features and append fake symbols at the end
     for i in range(num_data):
         num_real_symbols = d_max - num_fake_symbols[i]
@@ -680,9 +703,13 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             d_max = 27
         elif num_layers == 4:
             d_max = 81
-        
+
         self.features, self.labels = sample_data_from_labels_varying_tree_tensorized(
-            labels, self.rules, create_probabilities(m_2, m_3, num_layers),num_features,d_max
+            labels,
+            self.rules,
+            create_probabilities(m_2, m_3, num_layers),
+            num_features,
+            d_max,
         )
 
         if "onehot" not in input_format:
@@ -714,8 +741,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             # Apply the mask to set elements to zero
             self.features[mask.unsqueeze(1).expand_as(self.features)] = 0
             batch_size, num_features, input_size = self.features.shape
-            print('done')
-            #print(sum_of_squares)
+            print("done")
+            # print(sum_of_squares)
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
@@ -767,6 +794,7 @@ class MixedRandomHierarchyModel(Dataset):
         replacement=False,
         whitening=0,
         padding=0,
+        padding_central=0,
         transform=None,
     ):
 
@@ -795,15 +823,15 @@ class MixedRandomHierarchyModel(Dataset):
         elif self.rule_sequence_type == 2:
             rule_types = [(i + 1) % 2 for i in range(max_rule_types)]
         elif self.rule_sequence_type == 3:
-            rule_types = [0,0,0]
+            rule_types = [0, 0, 0]
         elif self.rule_sequence_type == 4:
-            rule_types = [0,1,1]
+            rule_types = [0, 1, 1]
         elif self.rule_sequence_type == 5:
-            rule_types = [1,0,0,0]
+            rule_types = [1, 0, 0, 0]
         elif self.rule_sequence_type == 6:
-            rule_types = [1,1,0,1]
+            rule_types = [1, 1, 0, 1]
         elif self.rule_sequence_type == 7:
-            rule_types = [1,1,1,1]
+            rule_types = [1, 1, 1, 1]
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
@@ -880,6 +908,33 @@ class MixedRandomHierarchyModel(Dataset):
                 sum_of_squares = torch.round(sum_of_squares).to(torch.int)
                 sum_of_squares = sum_of_squares.squeeze()
                 print(sum_of_squares)
+            if padding_central:
+                target_size = 10
+                if input_size < target_size:
+                    pad_size = target_size - input_size
+                    left_pad = pad_size // 2
+                    right_pad = (
+                        pad_size - left_pad
+                    )  # Ensures right side gets extra if pad_size is odd
+
+                    left_pad_tensor = torch.zeros(
+                        batch_size,
+                        num_features,
+                        left_pad,
+                        device=self.features.device,
+                        dtype=self.features.dtype,
+                    )
+                    right_pad_tensor = torch.zeros(
+                        batch_size,
+                        num_features,
+                        right_pad,
+                        device=self.features.device,
+                        dtype=self.features.dtype,
+                    )
+
+                    self.features = torch.cat(
+                        [left_pad_tensor, self.features, right_pad_tensor], dim=2
+                    )  # Stack zeros at the beginning and end along the last dimension
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
