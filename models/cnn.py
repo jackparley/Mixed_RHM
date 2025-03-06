@@ -566,6 +566,74 @@ class MyConv1d(nn.Module):
         )
 
 
+class hCNN_Gen(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        nn_dim,
+        out_channels,
+        num_layers,
+        bias=False,
+        norm="std",
+    ):
+        """
+        Generic Hierarchical CNN
+
+        Args:
+            input_dim: The input dimension.
+            patch_size: The size of the patches.
+            in_channels: The number of input channels.
+            nn_dim: The number of hidden neurons per layer.
+            out_channels: The output dimension.
+            num_layers: The number of layers.
+            bias: True for adding bias.
+            norm: Scaling factor for the readout layer.
+        """
+        super().__init__()
+        filter_size=4
+        stride_length=2
+
+        self.hidden = nn.Sequential(
+            nn.Sequential(
+                MyConv1d(in_channels, nn_dim, filter_size,stride=stride_length, bias=bias),
+                nn.ReLU(),
+            ),
+            *[
+                nn.Sequential(
+                    MyConv1d(nn_dim, nn_dim,filter_size,stride=stride_length, bias=bias),
+                    nn.ReLU(),
+                )
+                for l in range(1, num_layers)
+            ],
+        )
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        """
+        Args:
+            x: input, tensor of size (batch_size, in_channels, input_dim).
+
+        Returns:
+            Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
+        """
+        x = self.hidden(x)
+        x = x.mean(
+            dim=[-1]
+        )  # Global Average Pooling if the final spatial dimension is > 1
+        x = x @ self.readout / self.norm
+        return x
+
+
+
+
+
+
+
+
 class hCNN(nn.Module):
     def __init__(
         self,
