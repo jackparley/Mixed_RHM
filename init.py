@@ -55,7 +55,8 @@ def init_data_mixed(args):
             input_format=args.input_format,
             whitening=args.whitening,
             padding=args.padding, 
-            padding_central=args.padding_central, 
+            padding_central=args.padding_central,
+            padding_tail=args.padding_tail, 
             replacement=args.replacement
             )
     elif args.dataset=='mixed_rhm_varying_tree':
