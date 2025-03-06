@@ -73,6 +73,7 @@ def init_data_mixed(args):
             train_size=args.train_size,
             test_size=test_size,
             padding_tail=args.padding_tail,
+            padding_central=args.padding_central,
             input_format=args.input_format,
             whitening=args.whitening            )
         print('Dataset loaded')
