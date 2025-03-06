@@ -671,6 +671,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         seed_sample=1,
         train_size=-1,
         test_size=0,
+        padding_tail=0,
         input_format="onehot",
         whitening=0,
         transform=None,
@@ -743,6 +744,18 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             batch_size, num_features, input_size = self.features.shape
             print("done")
             # print(sum_of_squares)
+
+            if padding_tail:
+                pad_size = 1
+                pad_tensor = torch.zeros(
+                    batch_size,
+                    num_features,
+                    pad_size,
+                    device=self.features.device,
+                    dtype=self.features.dtype,
+                )
+                self.features = torch.cat((self.features, pad_tensor), dim=2)
+
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
