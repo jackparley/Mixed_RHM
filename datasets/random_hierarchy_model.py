@@ -385,8 +385,57 @@ def sample_data_from_labels_varying_tree_tensorized(
         num_real_symbols = d_max - num_fake_symbols[i]
         result[i, :num_real_symbols] = real_features[i]
         result[i, num_real_symbols:] = num_features
+    return result, labels
+
+
+
+def sample_data_from_labels_varying_tree_tensorized_padding_central(
+    labels, rules, probability, num_features, d_max
+):
+    """
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
+
+    Args:
+        labels: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
+        rules: A dictionary containing the rules for each level of the hierarchy.
+        probability: A dictionary containing the distribution of the rules for each level of the hierarchy.
+
+    Returns:
+        A tuple containing the inputs and outputs of the model.
+    """
+    L = len(rules)  # Number of levels in the hierarchy
+
+    features = labels
+
+    for l in range(L):
+        chosen_rule = torch.multinomial(
+            probability[l], features.numel(), replacement=True
+        ).reshape(
+            features.shape
+        )  # Choose a rule for each variable in the current level according to probability[l]
+        features = rules[l][features, chosen_rule].flatten(
+            start_dim=1
+        )  # Apply the chosen rule to each variable in the current level
+    mask = features == num_features
+
+    # Count the number of fake symbols in each row
+    num_fake_symbols = mask.sum(dim=1)
+
+    # Create a tensor to hold the final result
+    result = torch.zeros_like(features)
+    num_data = features.shape[0]  # Number of data points
+    # Remove the fake symbols and keep the original order of the rest of the elements
+    real_features = [features[i, ~mask[i]] for i in range(num_data)]
+    # print(real_features)
+    # Fill the result tensor with real features and append fake symbols at the end
+    for i in range(num_data):
+        num_real_symbols = d_max - num_fake_symbols[i]
+        left_fake = num_fake_symbols[i] // 2 + (num_fake_symbols[i] % 2)  # Extra fake on left if odd
+
+        result[i, left_fake:left_fake + num_real_symbols] = real_features[i]
 
     return result, labels
+
 
 
 def sample_data_from_labels_fixed_tree(labels, rules, rule_types):
@@ -672,6 +721,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         train_size=-1,
         test_size=0,
         padding_tail=0,
+        padding_central=0,
         input_format="onehot",
         whitening=0,
         transform=None,
@@ -704,14 +754,23 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             d_max = 27
         elif num_layers == 4:
             d_max = 81
+        if not padding_central:
+            self.features, self.labels = sample_data_from_labels_varying_tree_tensorized(
+                labels,
+                self.rules,
+                create_probabilities(m_2, m_3, num_layers),
+                num_features,
+                d_max,
+            )
+        else:
 
-        self.features, self.labels = sample_data_from_labels_varying_tree_tensorized(
-            labels,
-            self.rules,
-            create_probabilities(m_2, m_3, num_layers),
-            num_features,
-            d_max,
-        )
+            self.features, self.labels = sample_data_from_labels_varying_tree_tensorized_padding_central(
+                labels,
+                self.rules,
+                create_probabilities(m_2, m_3, num_layers),
+                num_features,
+                d_max,
+            )
 
         if "onehot" not in input_format:
             assert not whitening, "Whitening only implemented for one-hot encoding"
