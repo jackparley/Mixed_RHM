@@ -54,7 +54,8 @@ def init_data_mixed(args):
             test_size=test_size,
             input_format=args.input_format,
             whitening=args.whitening,
-            padding=args.padding,  
+            padding=args.padding, 
+            padding_central=args.padding_central, 
             replacement=args.replacement
             )
     elif args.dataset=='mixed_rhm_varying_tree':
@@ -92,6 +93,16 @@ def init_model_mixed(args):
     if args.model == 'hcnn_mixed':
         model = models.hCNN_mixed(
             rule_sequence_type=args.rule_sequence_type,
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            num_layers=args.depth,
+            bias=args.bias,
+            norm='mf' #TODO: add arg for different norm
+        )
+        args.lr *= args.width #TODO: modify for different norm
+    elif args.model == 'hcnn_Gen':
+        model = models.hCNN_Gen(
             in_channels=args.num_features,
             nn_dim=args.width,
             out_channels=args.num_classes,
