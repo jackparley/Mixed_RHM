@@ -178,6 +178,7 @@ parser.add_argument("--seed_sample", type=int, help='seed for the sampling of tr
 parser.add_argument('--input_format', type=str, default='onehot')
 parser.add_argument('--whitening', type=int, default=0)
 parser.add_argument('--padding', type=int, default=0)
+parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
 	ARCHITECTURE ARGS
