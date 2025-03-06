@@ -795,6 +795,7 @@ class MixedRandomHierarchyModel(Dataset):
         whitening=0,
         padding=0,
         padding_central=0,
+        padding_tail=0,
         transform=None,
     ):
 
@@ -935,7 +936,21 @@ class MixedRandomHierarchyModel(Dataset):
                     self.features = torch.cat(
                         [left_pad_tensor, self.features, right_pad_tensor], dim=2
                     )  # Stack zeros at the beginning and end along the last dimension
+            if padding_tail:
 
+                target_size = 10
+                if input_size < target_size:
+                    pad_size = target_size - input_size
+                    pad_tensor = torch.zeros(
+                        batch_size,
+                        num_features,
+                        pad_size,
+                        device=self.features.device,
+                        dtype=self.features.dtype,
+                    )
+                    self.features = torch.cat(
+                        [self.features, pad_tensor], dim=2
+                    )  # Stack zeros at the end along the last dimension   
         elif "long" in input_format:
             self.features = self.features.long() + 1
 
