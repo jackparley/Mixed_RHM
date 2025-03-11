@@ -298,6 +298,7 @@ def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
 def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
     L = len(rules)
     all_features = []
+    tree_types = []
     for label in labels:
         # Initialize the current symbols with the start symbol
         current_symbols = [label]
@@ -306,6 +307,8 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
             new_symbols = []
             for symbol in current_symbols:
                 rule_type = torch.randint(low=0, high=2, size=(1,)).item()
+                if layer==0:
+                    first_rule=rule_type
                 # print(rule_type)
                 rule_tensor = rules[layer][rule_type]
                 chosen_rule = torch.randint(
@@ -328,8 +331,20 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
                     ]
                 )
         all_features.append(features)
+        if len(features) < 6:
+            tree_types.append(len(features)-4)
+        elif len(features) >6:
+            tree_types.append(len(features)-3)
+        elif len(features) == 6:
+            if first_rule==0:
+                tree_types.append(2)
+            else:
+                tree_types.append(3)
+
+        
+
     concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
-    return concatenated_features, labels
+    return concatenated_features, labels,tree_types
 
 
 def create_probabilities(m_2, m_3, L):
@@ -388,7 +403,6 @@ def sample_data_from_labels_varying_tree_tensorized(
     return result, labels
 
 
-
 def sample_data_from_labels_varying_tree_tensorized_padding_central(
     labels, rules, probability, num_features, d_max
 ):
@@ -430,12 +444,13 @@ def sample_data_from_labels_varying_tree_tensorized_padding_central(
     # Fill the result tensor with real features and append fake symbols at the end
     for i in range(num_data):
         num_real_symbols = d_max - num_fake_symbols[i]
-        left_fake = num_fake_symbols[i] // 2 + (num_fake_symbols[i] % 2)  # Extra fake on left if odd
+        left_fake = num_fake_symbols[i] // 2 + (
+            num_fake_symbols[i] % 2
+        )  # Extra fake on left if odd
 
-        result[i, left_fake:left_fake + num_real_symbols] = real_features[i]
+        result[i, left_fake : left_fake + num_real_symbols] = real_features[i]
 
     return result, labels
-
 
 
 def sample_data_from_labels_fixed_tree(labels, rules, rule_types):
@@ -722,6 +737,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         test_size=0,
         padding_tail=0,
         padding_central=0,
+        return_type=0,
         input_format="onehot",
         whitening=0,
         transform=None,
@@ -754,22 +770,31 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             d_max = 27
         elif num_layers == 4:
             d_max = 81
-        if not padding_central:
-            self.features, self.labels = sample_data_from_labels_varying_tree_tensorized(
-                labels,
-                self.rules,
-                create_probabilities(m_2, m_3, num_layers),
-                num_features,
-                d_max,
+        if padding_central:
+            self.features, self.labels = (
+                sample_data_from_labels_varying_tree_tensorized_padding_central(
+                    labels,
+                    self.rules,
+                    create_probabilities(m_2, m_3, num_layers),
+                    num_features,
+                    d_max,
+                )
+            )
+        elif return_type:
+            self.features, self.labels, self.tree_types = (
+                sample_data_from_labels_varying_tree(
+                    self.labels, self.rules, num_features, d_max
+                )
             )
         else:
-
-            self.features, self.labels = sample_data_from_labels_varying_tree_tensorized_padding_central(
-                labels,
-                self.rules,
-                create_probabilities(m_2, m_3, num_layers),
-                num_features,
-                d_max,
+            self.features, self.labels = (
+                sample_data_from_labels_varying_tree_tensorized(
+                    labels,
+                    self.rules,
+                    create_probabilities(m_2, m_3, num_layers),
+                    num_features,
+                    d_max,
+                )
             )
 
         if "onehot" not in input_format:
@@ -814,7 +839,6 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     dtype=self.features.dtype,
                 )
                 self.features = torch.cat((self.features, pad_tensor), dim=2)
-
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
@@ -1022,7 +1046,7 @@ class MixedRandomHierarchyModel(Dataset):
                     )
                     self.features = torch.cat(
                         [self.features, pad_tensor], dim=2
-                    )  # Stack zeros at the end along the last dimension   
+                    )  # Stack zeros at the end along the last dimension
         elif "long" in input_format:
             self.features = self.features.long() + 1
 
