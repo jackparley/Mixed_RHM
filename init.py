@@ -81,7 +81,7 @@ def init_data_mixed(args):
     trainset = torch.utils.data.Subset(dataset, range(args.train_size))
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     testset = torch.utils.data.Subset(dataset, range(args.train_size, args.train_size+test_size))
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=1024, shuffle=False, num_workers=0)
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=len(testset),shuffle=False, num_workers=0)
 
     return train_loader, test_loader
 
