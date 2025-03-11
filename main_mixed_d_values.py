@@ -35,7 +35,7 @@ def run( args):
     args.num_batches = args.train_size//args.batch_size
     args.max_iters = args.max_epochs*args.num_batches
 
-    train_loader, test_loader= init.init_data_mixed( args)
+    train_loader, test_loader_indexed,data_type= init.init_data_mixed( args)
 
 
     model = init.init_model_mixed( args)
@@ -91,14 +91,14 @@ def run( args):
 
                 if step==print_ckpt:
 
-                    test_loss, test_acc = measures.test(model, test_loader, args.device)
+                    #test_loss, test_acc = measures.test(model, test_loader, args.device)
 
                     # Initialize storage for each type
                     type_losses = defaultdict(list)
                     type_correct = defaultdict(int)
                     type_counts = defaultdict(int)
                     with torch.no_grad():
-                        for inputs, labels in test_loader:
+                        for inputs, labels, indices in test_loader_indexed:
                             inputs = inputs.to(args.device)
                             labels = labels.to(args.device)
                            
@@ -112,10 +112,13 @@ def run( args):
                             sum_of_squares = torch.sum(inputs**2, dim=(1, 2), keepdim=True)
                             sum_of_squares = torch.round(sum_of_squares).to(torch.int)
                             sum_of_squares = sum_of_squares.squeeze()-4  #Indices from 0 to 8
+
                            
                             for i in range(len(labels)):
                                 type_id = sum_of_squares[i].item()  # Lookup type (0 to 6)
-                                
+                                print("type_id_old:", type_id)
+                                type_id=data_type[indices[i]]
+                                print("type_id_new:", type_id)
                                 type_losses[type_id].append(losses[i].item())
                                 type_correct[type_id] += (preds[i] == labels[i]).item()
                                 type_counts[type_id] += 1
@@ -124,7 +127,7 @@ def run( args):
                     counts_sum=0
                     loss_sum = 0
                     correct_sum = 0
-                    for type_id in range(6ixe):
+                    for type_id in range(7):
                         if type_counts[type_id] == 0:
                             print(f"Type {type_id}: No samples.")
                             continue
@@ -272,6 +275,7 @@ parser.add_argument('--whitening', type=int, default=0)
 parser.add_argument('--padding', type=int, default=0)
 parser.add_argument('--padding_tail', type=int, default=0)
 parser.add_argument('--padding_central', type=int, default=0)
+parser.add_argument('--return_type', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
 ARCHITECTURE ARGS
