@@ -10,6 +10,17 @@ import datasets
 import models
 import measures
 
+class IndexedDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        data, label = self.dataset[idx]  # Your dataset returns (x, y)
+        return data, label, idx
+
 
 class CosineWarmupLR(optim.lr_scheduler._LRScheduler):
 
@@ -74,6 +85,7 @@ def init_data_mixed(args):
             test_size=test_size,
             padding_tail=args.padding_tail,
             padding_central=args.padding_central,
+            return_type=args.return_type,
             input_format=args.input_format,
             whitening=args.whitening            )
         print('Dataset loaded')
@@ -82,8 +94,15 @@ def init_data_mixed(args):
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     testset = torch.utils.data.Subset(dataset, range(args.train_size, args.train_size+test_size))
     test_loader = torch.utils.data.DataLoader(testset, batch_size=len(testset),shuffle=False, num_workers=0)
-
-    return train_loader, test_loader
+    indexed_testset = IndexedDataset(testset)
+    test_loader_indexed = torch.utils.data.DataLoader(indexed_testset, batch_size=len(testset), shuffle=False)  
+    if args.return_type==1:
+        tree_ints=dataset.tree_types
+        subset_indices = range(args.train_size, args.train_size + test_size)
+        subset_data_type = [tree_ints[i] for i in subset_indices]
+        return train_loader, test_loader_indexed, subset_data_type
+    else:
+        return train_loader, test_loader
 
 
 
