@@ -51,7 +51,7 @@ def run( args):
 
     start_time = time.time()
     step = 0
-    dynamics, best = init.init_output_mixed( model, criterion, train_loader, test_loader, args)
+    dynamics, best = init.init_output_mixed( model, criterion, train_loader, test_loader_indexed, args)
     #if args.checkpoints:
 
      #   output = {
@@ -139,7 +139,8 @@ def run( args):
                         correct_sum += type_correct[type_id]
                     print(f"Total: Loss = {loss_sum/counts_sum:.4f}, Accuracy = {correct_sum/counts_sum:.4f}")
 
-
+                    test_loss = loss_sum/counts_sum
+                    test_acc = correct_sum/counts_sum
                    
 
 
