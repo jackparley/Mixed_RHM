@@ -30,7 +30,7 @@ def run( args):
     # reduce batch_size when larger than train_size
     if (args.batch_size >= args.train_size):
         args.batch_size = args.train_size
-    
+   
     assert (args.train_size%args.batch_size)==0, 'batch_size must divide train_size!'
     args.num_batches = args.train_size//args.batch_size
     args.max_iters = args.max_epochs*args.num_batches
@@ -63,7 +63,7 @@ def run( args):
          #   pickle.dump(args, handle)
           #  pickle.dump(output, handle)
 
-    
+   
     window_size = 5
     test_loss_window = collections.deque(maxlen=window_size)
     step_window = collections.deque(maxlen=window_size)
@@ -101,20 +101,20 @@ def run( args):
                         for inputs, labels in test_loader:
                             inputs = inputs.to(args.device)
                             labels = labels.to(args.device)
-                            
+                           
                             outputs = model(inputs)
-                            
+                           
                             # Compute loss for the batch (element-wise)
                             losses = F.cross_entropy(outputs, labels, reduction='none')
-                            
+                           
                             # Predicted classes
                             preds = outputs.argmax(dim=1)
                             sum_of_squares = torch.sum(inputs**2, dim=(1, 2), keepdim=True)
                             sum_of_squares = torch.round(sum_of_squares).to(torch.int)
                             sum_of_squares = sum_of_squares.squeeze()-4  #Indices from 0 to 8
-                            
+                           
                             for i in range(len(labels)):
-                                type_id = sum_of_squares[i]  # Lookup type (0 to 6)
+                                type_id = sum_of_squares[i].item()  # Lookup type (0 to 6)
                                 
                                 type_losses[type_id].append(losses[i].item())
                                 type_correct[type_id] += (preds[i] == labels[i]).item()
@@ -137,7 +137,7 @@ def run( args):
                     print(f"Total: Loss = {loss_sum/counts_sum:.4f}, Accuracy = {correct_sum/counts_sum:.4f}")
 
 
-                    
+                   
 
 
                     print('step : ',step, '\t train loss: {:06.4f}'.format(running_loss/(batch_idx+1)), ',test loss: {:06.4f}'.format(test_loss))
@@ -241,7 +241,7 @@ def run( args):
             break
     #filename = 'dynamics.pkl'
 
-# Write the list to a pickle file   
+# Write the list to a pickle file  
     with open(args.outname, 'wb') as file:
         pickle.dump(dynamics, file)        
     return None
@@ -251,7 +251,7 @@ torch.set_default_dtype(torch.float32)
 parser = argparse.ArgumentParser(description='Learning the Random Hierarchy Model with deep neural networks')
 parser.add_argument("--device", type=str, default='cuda')
 '''
-	DATASET ARGS
+DATASET ARGS
 '''
 parser.add_argument('--dataset', type=str)
 parser.add_argument('--num_features', metavar='v', type=int, help='number of features')
@@ -274,7 +274,7 @@ parser.add_argument('--padding_tail', type=int, default=0)
 parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
-	ARCHITECTURE ARGS
+ARCHITECTURE ARGS
 '''
 parser.add_argument('--model', type=str, help='architecture (fcn, hcnn,hcnn_mixed, hlcn, transformer_mla)')
 parser.add_argument('--depth', type=int, help='depth of the network')
@@ -292,7 +292,7 @@ parser.add_argument('--scheduler', type=str, default=None)
 parser.add_argument('--scheduler_time', type=int, default=None)
 parser.add_argument('--max_epochs', type=int, default=100)
 '''
-	OUTPUT ARGS
+OUTPUT ARGS
 '''
 parser.add_argument('--print_freq', type=int, help='frequency of prints', default=16)
 parser.add_argument('--save_freq', type=int, help='frequency of saves', default=2)
