@@ -109,16 +109,16 @@ def run( args):
                            
                             # Predicted classes
                             preds = outputs.argmax(dim=1)
-                            sum_of_squares = torch.sum(inputs**2, dim=(1, 2), keepdim=True)
-                            sum_of_squares = torch.round(sum_of_squares).to(torch.int)
-                            sum_of_squares = sum_of_squares.squeeze()-4  #Indices from 0 to 8
+                            #sum_of_squares = torch.sum(inputs**2, dim=(1, 2), keepdim=True)
+                            #sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+                            #sum_of_squares = sum_of_squares.squeeze()-4  #Indices from 0 to 8
 
                            
                             for i in range(len(labels)):
-                                type_id = sum_of_squares[i].item()  # Lookup type (0 to 6)
-                                print("type_id_old:", type_id)
+                                #type_id = sum_of_squares[i].item()  # Lookup type (0 to 6)
+                                #print("type_id_old:", type_id)
                                 type_id=data_type[indices[i]]
-                                print("type_id_new:", type_id)
+                                #print("type_id_new:", type_id)
                                 type_losses[type_id].append(losses[i].item())
                                 type_correct[type_id] += (preds[i] == labels[i]).item()
                                 type_counts[type_id] += 1
@@ -127,12 +127,16 @@ def run( args):
                     counts_sum=0
                     loss_sum = 0
                     correct_sum = 0
+                    avg_losses=np.zeros(7)
+                    avg_accs=np.zeros(7)
                     for type_id in range(7):
                         if type_counts[type_id] == 0:
-                            print(f"Type {type_id}: No samples.")
+                            #print(f"Type {type_id}: No samples.")
                             continue
                         avg_loss = sum(type_losses[type_id]) / type_counts[type_id]
+                        avg_losses[type_id]=avg_loss
                         accuracy = type_correct[type_id] / type_counts[type_id]
+                        avg_accs[type_id]=accuracy
                         print(f"Type {type_id}: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
                         counts_sum += type_counts[type_id]
                         loss_sum += sum(type_losses[type_id])
@@ -152,7 +156,7 @@ def run( args):
                         print(f'Checkpoint at step {step}, saving data ...')
 
                         train_loss, train_acc = measures.test(model, train_loader, args.device)
-                        save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                        save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc, 'avg_losses': avg_losses, 'avg_accs': avg_accs}
                         dynamics.append(save_dict)
 
                          # Store (1 - test_acc) in the deque
@@ -188,7 +192,7 @@ def run( args):
                                     # Stop if plateauing or consistently increasing (more than 70% of the time)
                                     print("Training stopped: Loss plateau or consistently increasing trend detected.")
                                     train_loss, train_acc = measures.test(model, train_loader, args.device)
-                                    save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                    save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc, 'avg_losses': avg_losses, 'avg_accs': avg_accs}
                                     dynamics.append(save_dict)
                                     stop_training = True  # Set flag to stop both loops
                                     break  # Stop training
@@ -220,7 +224,7 @@ def run( args):
         if (running_loss/(batch_idx+1)) <= args.loss_threshold:
 
             train_loss, train_acc = measures.test(model, train_loader, args.device)
-            save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+            save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc, 'avg_losses': avg_losses, 'avg_accs': avg_accs}
             dynamics.append(save_dict)
 
             #if args.checkpoints:
