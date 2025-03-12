@@ -322,15 +322,6 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
                 current_symbols = new_symbols
             features = torch.tensor(new_symbols)
             # Pad this with extra symbol according to d_max
-            if len(features) < d_max:
-                features = torch.cat(
-                    [
-                        features,
-                        num_features
-                        * torch.ones(d_max - len(features), dtype=torch.int64),
-                    ]
-                )
-        all_features.append(features)
         if len(features) < 6:
             tree_types.append(len(features)-4)
         elif len(features) >6:
@@ -340,6 +331,16 @@ def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
                 tree_types.append(2)
             else:
                 tree_types.append(3)
+        if len(features) < d_max:
+            features = torch.cat(
+                [
+                    features,
+                    num_features
+                    * torch.ones(d_max - len(features), dtype=torch.int64),
+                ]
+            )
+        all_features.append(features)
+        
 
         
 
@@ -755,10 +756,16 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_2 = s_2
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
+        
+        if return_type==1:
+            self.rules = sample_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
 
-        self.rules = sample_padded_rules(
-            num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
-        )
+        else:
+            self.rules = sample_padded_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
@@ -783,7 +790,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         elif return_type:
             self.features, self.labels, self.tree_types = (
                 sample_data_from_labels_varying_tree(
-                    self.labels, self.rules, num_features, d_max
+                    labels, self.rules, num_features, d_max
                 )
             )
         else:
