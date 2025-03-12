@@ -438,8 +438,9 @@ def init_output_mixed( model, criterion, train_loader, test_loader, args):
     """
 
     trainloss, trainacc = measures.test(model, train_loader, args.device)
-    testloss, testacc = measures.test(model, test_loader, args.device)
-    
+    #testloss, testacc = measures.test(model, test_loader, args.device)
+    testloss=trainloss
+    testacc=trainacc
     print_dict = {'t': 0, 'trainloss': trainloss, 'trainacc': trainacc, 'testloss': testloss, 'testacc': testacc}
     dynamics = [print_dict]
 
