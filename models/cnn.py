@@ -607,7 +607,7 @@ class hCNN_Gen(nn.Module):
                 for _ in range(1, num_layers)
             ],
         )
-
+        self.nn_dim = nn_dim  # Number of hidden neurons per layer
         self.final_dim = final_dim  # Predefined spatial size after conv layers
 
         # Define readout layer with flattened input
