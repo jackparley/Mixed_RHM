@@ -566,6 +566,7 @@ class MyConv1d(nn.Module):
         )
 
 
+
 class hCNN_Gen(nn.Module):
     def __init__(
         self,
@@ -573,44 +574,50 @@ class hCNN_Gen(nn.Module):
         nn_dim,
         out_channels,
         num_layers,
+        final_dim,    # This is the input size after convolutions
         bias=False,
         norm="std",
     ):
         """
-        Generic Hierarchical CNN
+        Generic Hierarchical CNN supporting predefined final output lengths.
 
         Args:
-            input_dim: The input dimension.
-            patch_size: The size of the patches.
             in_channels: The number of input channels.
             nn_dim: The number of hidden neurons per layer.
             out_channels: The output dimension.
-            num_layers: The number of layers.
+            num_layers: The number of convolutional layers.
+            final_dim: The spatial size (length) after the convolution layers.
             bias: True for adding bias.
             norm: Scaling factor for the readout layer.
         """
         super().__init__()
-        filter_size=4
-        stride_length=2
+        filter_size = 4
+        stride_length = 2
 
         self.hidden = nn.Sequential(
             nn.Sequential(
-                MyConv1d(in_channels, nn_dim, filter_size,stride=stride_length, bias=bias),
+                MyConv1d(in_channels, nn_dim, filter_size, stride=stride_length, bias=bias),
                 nn.ReLU(),
             ),
             *[
                 nn.Sequential(
-                    MyConv1d(nn_dim, nn_dim,filter_size,stride=stride_length, bias=bias),
+                    MyConv1d(nn_dim, nn_dim, filter_size, stride=stride_length, bias=bias),
                     nn.ReLU(),
                 )
-                for l in range(1, num_layers)
+                for _ in range(1, num_layers)
             ],
         )
-        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+
+        self.final_dim = final_dim  # Predefined spatial size after conv layers
+
+        # Define readout layer with flattened input
+        self.readout = nn.Parameter(torch.randn(nn_dim * final_dim, out_channels))
+
+        # Norm scaling for feature learning regime
         if norm == "std":
-            self.norm = nn_dim**0.5  # standard NTK scaling
+            self.norm = (nn_dim * final_dim) ** 0.5  # standard NTK scaling
         elif norm == "mf":
-            self.norm = nn_dim  # mean-field scaling
+            self.norm = nn_dim * final_dim           # mean-field scaling
 
     def forward(self, x):
         """
@@ -620,13 +627,16 @@ class hCNN_Gen(nn.Module):
         Returns:
             Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
         """
-        x = self.hidden(x)
-        x = x.mean(
-            dim=[-1]
-        )  # Global Average Pooling if the final spatial dimension is > 1
-        x = x @ self.readout / self.norm
-        return x
+        x = self.hidden(x)  # (batch_size, nn_dim, final_dim)
+        batch_size = x.shape[0]
 
+        # Flatten the conv output along feature dimensions
+        x = x.reshape(batch_size, self.nn_dim * self.final_dim)
+
+        # Linear readout with mean-field scaling
+        x = x @ self.readout / self.norm
+
+        return x
 
 
 
