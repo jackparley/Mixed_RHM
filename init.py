@@ -129,6 +129,7 @@ def init_model_mixed(args):
             nn_dim=args.width,
             out_channels=args.num_classes,
             num_layers=args.depth,
+            final_dim=args.final_dim,
             bias=args.bias,
             norm='mf' #TODO: add arg for different norm
         )
