@@ -267,6 +267,100 @@ def sample_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
 
     return rules
 
+def sample_non_overlapping_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
+    random.seed(seed)
+
+    # Define a callable for the defaultdict to return empty tensors
+    def tensor_default():
+        return torch.empty(0)
+
+    tuples_2 = list(product(*[range(v) for _ in range(s_2)]))
+    tuples_3 = list(product(*[range(v) for _ in range(s_3)]))
+
+    # Define the defaultdict structure
+    rules = defaultdict(tensor_default)
+
+    binary_rules_tuples = random.sample(tuples_2, n * m_2)
+    binary_rule_set = set(binary_rules_tuples)  # for fast lookup
+    binary_rules = torch.tensor(binary_rules_tuples).reshape(n, m_2, s_2)
+
+    # Rejection sampling for ternary rules
+    valid_ternary_rules = []
+    used_ternary_rules = set()  # to avoid replacement
+
+    for t in random.sample(tuples_3, len(tuples_3)):  # shuffle once to ensure uniformity
+        if len(valid_ternary_rules) >= n * m_3:
+            break
+        (a, b, c) = t
+        if (a, b) in binary_rule_set or (b, c) in binary_rule_set:
+            print("Binary overlap")
+            print(t)
+            continue
+        if t in used_ternary_rules:
+            continue
+        valid_ternary_rules.append(t)
+        used_ternary_rules.add(t)
+
+    # Check if enough ternary rules were found
+    if len(valid_ternary_rules) < n * m_3:
+        raise ValueError("Not enough valid ternary rules found without binary overlap.")
+
+    # Final tensor
+    ternary_rules = torch.tensor(valid_ternary_rules).reshape(n, m_3, s_3)
+   
+    # Pad binary rules with the fake symbol (integer v)
+    padding = torch.full((n, m_2, s_3 - s_2), v)
+    padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+    # Stack binary and ternary rules on top of each other
+    rules[0] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+
+
+    binary_rules_tuples = random.sample(tuples_2, n * m_2)
+    binary_rule_set = set(binary_rules_tuples)  # for fast lookup
+    binary_rules = torch.tensor(binary_rules_tuples).reshape(n, m_2, s_2)
+
+    # Rejection sampling for ternary rules
+    valid_ternary_rules = []
+    used_ternary_rules = set()  # to avoid replacement
+
+    for t in random.sample(tuples_3, len(tuples_3)):  # shuffle once to ensure uniformity
+        if len(valid_ternary_rules) >= n * m_3:
+            break
+        (a, b, c) = t
+        if (a, b) in binary_rule_set or (b, c) in binary_rule_set:
+            continue
+        if t in used_ternary_rules:
+            continue
+        valid_ternary_rules.append(t)
+        used_ternary_rules.add(t)
+
+    # Check if enough ternary rules were found
+    if len(valid_ternary_rules) < n * m_3:
+        raise ValueError("Not enough valid ternary rules found without binary overlap.")
+
+    # Final tensor
+    ternary_rules = torch.tensor(valid_ternary_rules).reshape(n, m_3, s_3)
+   
+    # Pad binary rules with the fake symbol (integer v)
+    padding = torch.full((n, m_2, s_3 - s_2), v)
+    padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+    # Stack binary and ternary rules on top of each other
+    rules[1] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+
+
+
+
+    # Add the fake symbol with rules [v, v, v] at each layer
+    for l in range(L):
+        fake_rules = torch.full((1, m_2 + m_3, 3), v)
+        rules[l] = torch.cat((rules[l], fake_rules), dim=0)
+
+    return rules,binary_rules,ternary_rules
+
 
 def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     random.seed(seed)
@@ -739,6 +833,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         padding_tail=0,
         padding_central=0,
         return_type=0,
+        non_overlapping=0,
         input_format="onehot",
         whitening=0,
         transform=None,
@@ -761,7 +856,10 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             self.rules = sample_mixed_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
-
+        elif return_type==0 and non_overlapping==1:
+            self.rules = sample_non_overlapping_padded_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
         else:
             self.rules = sample_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
