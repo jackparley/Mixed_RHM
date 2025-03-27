@@ -225,6 +225,7 @@ parser.add_argument('--padding', type=int, default=0)
 parser.add_argument('--padding_tail', type=int, default=0)
 parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--return_type', type=int, default=0)
+parser.add_argument('--non_overlapping', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
 	ARCHITECTURE ARGS
