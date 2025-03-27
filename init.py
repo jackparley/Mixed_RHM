@@ -86,6 +86,7 @@ def init_data_mixed(args):
             padding_tail=args.padding_tail,
             padding_central=args.padding_central,
             return_type=args.return_type,
+            non_overlapping=args.non_overlapping,
             input_format=args.input_format,
             whitening=args.whitening            )
         print('Dataset loaded')
