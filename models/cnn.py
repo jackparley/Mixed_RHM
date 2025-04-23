@@ -820,6 +820,7 @@ class hCNN_no_sharing(nn.Module):
         self,
         in_channels,
         nn_dim,
+        nn_dim_2,
         out_channels,
         bias=False,
         norm="std",
@@ -846,17 +847,17 @@ class hCNN_no_sharing(nn.Module):
                 ),
                 nn.ReLU(),
                     (
-                    MyConv1d_2(nn_dim, nn_dim, bias=bias)
+                    MyConv1d_2(nn_dim, nn_dim_2, bias=bias)
                     
                 ),
                 nn.ReLU(),
             )
 
-        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        self.readout = nn.Parameter(torch.randn(nn_dim_2, out_channels))
         if norm == "std":
-            self.norm = nn_dim**0.5  # standard NTK scaling
+            self.norm = nn_dim_2**0.5  # standard NTK scaling
         elif norm == "mf":
-            self.norm = nn_dim  # mean-field scaling
+            self.norm = nn_dim_2  # mean-field scaling
 
     def forward(self, x):
         """
