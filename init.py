@@ -68,7 +68,9 @@ def init_data_mixed(args):
             padding=args.padding, 
             padding_central=args.padding_central,
             padding_tail=args.padding_tail, 
-            replacement=args.replacement
+            replacement=args.replacement,
+            d_5_set=args.d_5_set,
+            non_overlapping=args.non_overlapping,
             )
     elif args.dataset=='mixed_rhm_varying_tree':
         test_size = 20000
@@ -86,6 +88,7 @@ def init_data_mixed(args):
             padding_tail=args.padding_tail,
             padding_central=args.padding_central,
             return_type=args.return_type,
+            d_5_4_set=args.d_5_4_set,
             non_overlapping=args.non_overlapping,
             input_format=args.input_format,
             whitening=args.whitening            )
@@ -131,6 +134,24 @@ def init_model_mixed(args):
             out_channels=args.num_classes,
             num_layers=args.depth,
             final_dim=args.final_dim,
+            bias=args.bias,
+            norm='mf' #TODO: add arg for different norm
+        )
+        args.lr *= args.width #TODO: modify for different norm
+    elif args.model == 'hcnn_sharing':
+        model = models.hCNN_sharing(
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            bias=args.bias,
+            norm='mf' #TODO: add arg for different norm
+        )
+        args.lr *= args.width #TODO: modify for different norm
+    elif args.model == 'hcnn_no_sharing':
+        model = models.hCNN_no_sharing(
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
             bias=args.bias,
             norm='mf' #TODO: add arg for different norm
         )
