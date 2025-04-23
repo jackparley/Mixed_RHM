@@ -178,14 +178,19 @@ parser.add_argument("--seed_sample", type=int, help='seed for the sampling of tr
 parser.add_argument('--input_format', type=str, default='onehot')
 parser.add_argument('--whitening', type=int, default=0)
 parser.add_argument('--padding', type=int, default=0)
-parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--padding_tail', type=int, default=0)
+parser.add_argument('--padding_central', type=int, default=0)
+parser.add_argument('--return_type', type=int, default=0)
+parser.add_argument('--non_overlapping', type=int, default=0)
+parser.add_argument('--d_5_set', type=int, default=0)
+parser.add_argument('--d_5_4_set', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
 	ARCHITECTURE ARGS
 '''
 parser.add_argument('--model', type=str, help='architecture (fcn, hcnn,hcnn_mixed, hlcn, transformer_mla)')
 parser.add_argument('--depth', type=int, help='depth of the network')
+parser.add_argument('--final_dim', type=int, help='final dimension for Gen CNN',default=1)
 parser.add_argument('--width', type=int, help='width of the network')
 parser.add_argument('--bias', default=False, action='store_true')
 parser.add_argument("--seed_model", type=int, help='seed for model initialization')
