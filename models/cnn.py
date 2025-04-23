@@ -6,6 +6,123 @@ import torch.nn.functional as F
 from torch import einsum
 
 
+class MyConv1d_no_sharing_old(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_3_1 = 3
+        self.filter_size_3_2 = 2
+        self.stride = 10  # Stride should be the sum of both patch sizes (2+3)
+
+        # Two separate filters
+        self.filter_3_1 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3_1)
+        )
+        self.filter_3_2 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3_2)
+        )
+
+        # Bias terms
+        if bias:
+            self.bias_3_1 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3_2 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_3_1", None)
+            self.register_parameter("bias_3_2", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Interleaved convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = (num valid patches from both filters, interleaved).
+        """
+
+        # Apply convolution separately on patch size 2
+        out_3_1 = (
+            F.conv1d(x, self.filter_3_1, self.bias_3_1, stride=self.stride)
+            / (self.filter_3_1.size(1) * self.filter_3_1.size(2)) ** 0.5
+        )
+
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        out_3_2 = (
+            F.conv1d(x[:, :, 3:], self.filter_3_2, self.bias_3_2, stride=self.stride)
+            / (self.filter_3_2.size(1) * self.filter_3_2.size(2)) ** 0.5
+        )
+        out = torch.cat((out_3_1, out_3_2), dim=-1)
+
+
+        return out
+
+
+
+
+class MyConv1d_no_sharing(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_3_1 = 3
+        self.filter_size_3_2 = 3
+        self.stride = 10  # Stride should be the sum of both patch sizes (2+3)
+
+        # Two separate filters
+        self.filter_3_1 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3_1)
+        )
+        self.filter_3_2 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3_2)
+        )
+
+        # Bias terms
+        if bias:
+            self.bias_3_1 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3_2 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_3_1", None)
+            self.register_parameter("bias_3_2", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Interleaved convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = (num valid patches from both filters, interleaved).
+        """
+
+        # Apply convolution separately on patch size 2
+        out_3_1 = (
+            F.conv1d(x, self.filter_3_1, self.bias_3_1, stride=self.stride)
+            / (self.filter_3_1.size(1) * self.filter_3_1.size(2)) ** 0.5
+        )
+
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        out_3_2 = (
+            F.conv1d(x[:, :, 2:], self.filter_3_2, self.bias_3_2, stride=self.stride)
+            / (self.filter_3_2.size(1) * self.filter_3_2.size(2)) ** 0.5
+        )
+        out = torch.cat((out_3_1, out_3_2), dim=-1)
+
+
+        return out
+
+
+
 class MyConv1d_mixed_interleave_start_2(nn.Module):
     def __init__(self, in_channels, out_channels, bias=False):
         """
@@ -410,6 +527,115 @@ class MyConv1d_3(nn.Module):
         return out
 
 
+class MyConv1d_3_stride_2(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_3 = 3
+
+        self.stride = 2
+        # a=0.1
+        # Two separate filters with proper initialization
+        # filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
+        # torch.nn.init.kaiming_uniform_(
+        #   filter_2, a=1.0
+        # )  # Scaled-down initialization for filter 2
+        # self.filter_2 = nn.Parameter(filter_2)
+
+        self.filter_3 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3)
+        )
+        # Bias terms
+        if bias:
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_3", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Concatenated convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = input_dim // 5
+        """
+
+        # Apply convolution separately on patch size 2
+        # out_3 = (
+        #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
+        out = (
+            F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        )
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        # Concatenate along the last dimension
+        return out
+
+class MyConv1d_3_stride_3(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_3 = 3
+
+        self.stride = 3
+        # a=0.1
+        # Two separate filters with proper initialization
+        # filter_2 = torch.empty(out_channels, in_channels, self.filter_size_2)
+        # torch.nn.init.kaiming_uniform_(
+        #   filter_2, a=1.0
+        # )  # Scaled-down initialization for filter 2
+        # self.filter_2 = nn.Parameter(filter_2)
+
+        self.filter_3 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3)
+        )
+        # Bias terms
+        if bias:
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_3", None)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of shape (batch_size, in_channels, input_dim).
+
+        Returns:
+            Concatenated convolutions applied to alternating patch sizes.
+            Output shape: (batch_size, out_channels, output_dim), where
+            output_dim = input_dim // 5
+        """
+
+        # Apply convolution separately on patch size 2
+        # out_3 = (
+        #   F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+        #  / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        # )
+        out = (
+            F.conv1d(x, self.filter_3, self.bias_3, stride=self.stride)
+            / (self.filter_3.size(1) * self.filter_3.size(2)) ** 0.5
+        )
+        # Apply convolution separately on patch size 3 (offset input by 2)
+        # Concatenate along the last dimension
+        return out
+
+
+
+
 class MyLinear(nn.Module):
 
     def __init__(self, input_dim, out_dim, bias=False):
@@ -506,6 +732,125 @@ class hCNN_mixed(nn.Module):
             ),
             nn.ReLU(),
         )
+
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        """
+        Args:
+            x: input, tensor of size (batch_size, in_channels, input_dim).
+
+        Returns:
+            Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
+        """
+        x = self.hidden(x)
+        x = x.mean(
+            dim=[-1]
+        )  # Global Average Pooling if the final spatial dimension is > 1
+        x = x @ self.readout / self.norm
+        return x
+
+
+
+class hCNN_sharing(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        nn_dim,
+        out_channels,
+        bias=False,
+        norm="std",
+    ):
+        """
+        Hierarchical CNN
+
+        Args:
+            input_dim: The input dimension.
+            patch_size: The size of the patches.
+            in_channels: The number of input channels.
+            nn_dim: The number of hidden neurons per layer.
+            out_channels: The output dimension.
+            num_layers: The number of layers.
+            bias: True for adding bias.
+            norm: Scaling factor for the readout layer.
+        """
+        super().__init__()
+
+        self.hidden = nn.Sequential(
+                (
+                    MyConv1d_3_stride_2(in_channels, nn_dim, bias=bias)
+                    
+                ),
+                nn.ReLU(),
+                    (
+                    MyConv1d_2(nn_dim, nn_dim, bias=bias)
+                    
+                ),
+                nn.ReLU(),
+            )
+
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        """
+        Args:
+            x: input, tensor of size (batch_size, in_channels, input_dim).
+
+        Returns:
+            Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
+        """
+        x = self.hidden(x)
+        x = x.mean(
+            dim=[-1]
+        )  # Global Average Pooling if the final spatial dimension is > 1
+        x = x @ self.readout / self.norm
+        return x
+
+
+class hCNN_no_sharing(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        nn_dim,
+        out_channels,
+        bias=False,
+        norm="std",
+    ):
+        """
+        Hierarchical CNN
+
+        Args:
+            input_dim: The input dimension.
+            patch_size: The size of the patches.
+            in_channels: The number of input channels.
+            nn_dim: The number of hidden neurons per layer.
+            out_channels: The output dimension.
+            num_layers: The number of layers.
+            bias: True for adding bias.
+            norm: Scaling factor for the readout layer.
+        """
+        super().__init__()
+
+        self.hidden = nn.Sequential(
+                (
+                    MyConv1d_no_sharing(in_channels, nn_dim, bias=bias)
+                    
+                ),
+                nn.ReLU(),
+                    (
+                    MyConv1d_2(nn_dim, nn_dim, bias=bias)
+                    
+                ),
+                nn.ReLU(),
+            )
 
         self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
         if norm == "std":
