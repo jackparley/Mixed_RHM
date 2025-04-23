@@ -14,6 +14,41 @@ from collections import defaultdict
 from .utils import dec2bin, dec2base, base2dec
 
 
+def index_to_choice_d_5(index, n,m2,m3):
+    Pmax=n*m2*m3*m2
+    if index <Pmax:
+
+        bases = [n, m2,m3,m2]  # Alternating base sizes
+        #index -= 1  # Convert to 0-based index
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+    else:
+        index = index-Pmax
+        bases = [n, m2,m2,m3]
+        choice = []
+
+        # Compute the total number of possibilities
+        total_combinations = 1
+        for base in bases:
+            total_combinations *= base
+
+        # Extract choices one by one
+        for base in bases:
+            total_combinations //= base  # Reduce divisor dynamically
+            choice.append(index // total_combinations + 1)
+            index %= total_combinations  # Reduce index to the remainder
+    return choice
+
 def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
     # n, m2, m3 = 16, 4, 64  # Number of choices per stage
     if L == 2 and rule_sequence_type == 1:
@@ -179,13 +214,61 @@ def index_to_choice(index, n, m2, m3, L, rule_sequence_type):
     return choice
 
 
+
+def sample_data_from_indices_d_5(
+    samples, rules, n, m_2, m_3
+):
+    L = len(rules)
+    Pmax=n*m_2*m_3*m_2
+    all_features = []
+    labels = []
+    #samples = samples + 1
+    for sample in samples:
+        chosen_rules = index_to_choice_d_5(sample, n, m_2, m_3)
+        labels.append(chosen_rules[0] - 1)
+        # print(chosen_rules[0])
+        chosen_rules = [x - 1 for x in chosen_rules]
+        # for label in labels:
+        # Initialize the current symbols with the start symbol
+        current_symbols = [chosen_rules[0]]
+
+        # Sequentially apply rules for each layer
+        k = 0
+        k_2 = 1
+        if sample <Pmax:
+            rule_types = [0, 1, 0]
+        else:
+            rule_types = [0, 0, 1]
+        
+        for layer in range(0, L):  # 1 to 3 (3 layers)
+            new_symbols = []
+            for symbol in current_symbols:
+                rule_type = rule_types[k]
+                k = k + 1
+                # print(rule_type)
+                rule_tensor = rules[layer][rule_type]
+                # chosen_rule=torch.randint(low=0,high=rule_tensor.shape[1],size=(1,)).item()
+                chosen_rule = chosen_rules[k_2]
+                k_2 = k_2 + 1
+                new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+            # print(new_symbols)
+            # new_symbols=new_symbols[0]
+            # print(new_symbols)
+            if new_symbols != []:
+                current_symbols = new_symbols
+            features = torch.tensor(new_symbols)
+        all_features.append(features)
+    concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
+    labels = torch.tensor(labels)
+    return concatenated_features, labels
+
 def sample_data_from_indices_fixed_tree(
     samples, rules, rule_types, n, m_2, m_3, rule_sequence_type
 ):
     L = len(rules)
     all_features = []
     labels = []
-    samples = samples + 1
+    #samples = samples + 1
     for sample in samples:
         chosen_rules = index_to_choice(sample, n, m_2, m_3, L, rule_sequence_type)
         labels.append(chosen_rules[0] - 1)
@@ -359,7 +442,53 @@ def sample_non_overlapping_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
         fake_rules = torch.full((1, m_2 + m_3, 3), v)
         rules[l] = torch.cat((rules[l], fake_rules), dim=0)
 
-    return rules,binary_rules,ternary_rules
+    return rules
+
+def sample_non_overlapping_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
+    random.seed(seed)
+
+    def tensor_default():
+        return torch.empty(0)
+
+    tuples_2 = list(product(*[range(v) for _ in range(s_2)]))
+    tuples_3 = list(product(*[range(v) for _ in range(s_3)]))
+
+    rules = defaultdict(lambda: defaultdict(tensor_default))
+    num_symbols=v
+    for l in range(L):
+        # Determine how many nonterminals at this level
+        
+
+        # Sample binary rules
+        binary_tuples = random.sample(tuples_2, num_symbols * m_2)
+        binary_rule_set = set(binary_tuples)
+        binary_rules = torch.tensor(binary_tuples).reshape(num_symbols, m_2, s_2)
+
+        # Rejection sampling for ternary rules without overlapping binary pairs
+        valid_ternary = []
+        used_ternary = set()
+        for t in random.sample(tuples_3, len(tuples_3)):  # shuffled
+            if len(valid_ternary) >= num_symbols * m_3:
+                break
+            (a, b, c) = t
+            if (a, b) in binary_rule_set or (b, c) in binary_rule_set:
+                continue
+            if t in used_ternary:
+                continue
+            valid_ternary.append(t)
+            used_ternary.add(t)
+
+        if len(valid_ternary) < num_symbols * m_3:
+            raise ValueError(f"Not enough valid ternary rules found at layer {l}.")
+
+        ternary_rules = torch.tensor(valid_ternary).reshape(num_symbols, m_3, s_3)
+
+        rules[l][0] = binary_rules
+        rules[l][1] = ternary_rules
+
+    return rules
+
+
 
 
 def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
@@ -389,18 +518,24 @@ def sample_mixed_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     return rules
 
 
-def sample_data_from_labels_varying_tree(labels, rules, num_features, d_max):
+def sample_data_from_labels_varying_tree_d_5_4(labels, rules, num_features, d_max):
     L = len(rules)
     all_features = []
     tree_types = []
     for label in labels:
         # Initialize the current symbols with the start symbol
         current_symbols = [label]
+        k=0
+        rule_types = random.choice([[0, 0, 0], [0, 1, 0], [0, 0, 1]])
+        #rule_types = random.choice([[0, 0, 0], [0, 1, 0], [0, 0, 1],[0, 1, 1]])
         # Sequentially apply rules for each layer
         for layer in range(0, L):  # 1 to 3 (3 layers)
             new_symbols = []
+            
             for symbol in current_symbols:
-                rule_type = torch.randint(low=0, high=2, size=(1,)).item()
+                #rule_type = torch.randint(low=0, high=2, size=(1,)).item()
+                rule_type=rule_types[k]
+                k=k+1
                 if layer==0:
                     first_rule=rule_type
                 # print(rule_type)
@@ -450,6 +585,74 @@ def create_probabilities(m_2, m_3, L):
         )
         probabilities[l] = prob
     return probabilities
+
+
+
+def sample_data_from_labels_varying_tree_tensorized_d_values(
+    labels, rules, probability, num_features, d_max,m_2
+):
+    """
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
+
+    Args:
+        labels: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
+        rules: A dictionary containing the rules for each level of the hierarchy.
+        probability: A dictionary containing the distribution of the rules for each level of the hierarchy.
+
+    Returns:
+        A tuple containing the inputs and outputs of the model.
+    """
+    L = len(rules)  # Number of levels in the hierarchy
+
+    features = labels
+
+    chosen_rule = torch.multinomial(
+        probability[0], features.numel(), replacement=True
+    ).reshape(
+        features.shape
+    )  # Choose a rule for each variable in the current level according to probability[l]
+    features = rules[0][features, chosen_rule].flatten(
+        start_dim=1
+    )  # Apply the chosen rule to each variable in the current level
+
+    result_tensor = torch.where((chosen_rule[:] >= 0) & (chosen_rule[:] < m_2), 0, 1)
+
+    for l in range(1,L):
+        chosen_rule = torch.multinomial(
+            probability[l], features.numel(), replacement=True
+        ).reshape(
+            features.shape
+        )  # Choose a rule for each variable in the current level according to probability[l]
+        features = rules[l][features, chosen_rule].flatten(
+            start_dim=1
+        )  # Apply the chosen rule to each variable in the current level
+    mask = features == num_features
+
+    # Count the number of fake symbols in each row
+    num_fake_symbols = mask.sum(dim=1)
+
+    # Create a tensor to hold the final result
+    result = torch.zeros_like(features)
+    num_data = features.shape[0]  # Number of data points
+    # Remove the fake symbols and keep the original order of the rest of the elements
+    real_features = [features[i, ~mask[i]] for i in range(num_data)]
+    # print(real_features)
+    # Fill the result tensor with real features and append fake symbols at the end
+    tree_types=[]
+    for i in range(num_data):
+        num_real_symbols = d_max - num_fake_symbols[i]
+        result[i, :num_real_symbols] = real_features[i]
+        result[i, num_real_symbols:] = num_features
+        if num_real_symbols < 6:
+            tree_types.append(num_real_symbols.item()-4)
+        elif num_real_symbols >6:
+            tree_types.append(num_real_symbols.item()-3)
+        elif num_real_symbols == 6:
+            if result_tensor[i]==0:
+                tree_types.append(2)
+            else:
+                tree_types.append(3)    
+    return result, labels,tree_types
 
 
 def sample_data_from_labels_varying_tree_tensorized(
@@ -830,6 +1033,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         seed_sample=1,
         train_size=-1,
         test_size=0,
+        d_5_set=0,
+        d_5_4_set=0,
         padding_tail=0,
         padding_central=0,
         return_type=0,
@@ -852,18 +1057,26 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
         
-        if return_type==1:
-            self.rules = sample_mixed_rules(
+        if return_type==1 and d_5_4_set==0:
+            #self.rules = sample_mixed_rules(
+             #   num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            #)
+            self.rules = sample_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
         elif return_type==0 and non_overlapping==1:
             self.rules = sample_non_overlapping_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
+        elif d_5_set==1 or d_5_4_set==1:
+            self.rules = sample_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
         else:
             self.rules = sample_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
+        
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
@@ -885,12 +1098,21 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     d_max,
                 )
             )
-        elif return_type:
+        elif return_type and d_5_4_set==0:
+            #self.features, self.labels, self.tree_types = (
+             #   sample_data_from_labels_varying_tree(
+              #      labels, self.rules, num_features, d_max
+               # )
+            #)
             self.features, self.labels, self.tree_types = (
-                sample_data_from_labels_varying_tree(
-                    labels, self.rules, num_features, d_max
+                sample_data_from_labels_varying_tree_tensorized_d_values(
+                    labels, self.rules,create_probabilities(m_2, m_3, num_layers), num_features, d_max, m_2
                 )
             )
+
+        elif return_type and d_5_4_set:
+            self.features,self.labels,self.tree_types=sample_data_from_labels_varying_tree_d_5_4(labels, self.rules, num_features, d_max)
+
         else:
             self.features, self.labels = (
                 sample_data_from_labels_varying_tree_tensorized(
@@ -997,6 +1219,8 @@ class MixedRandomHierarchyModel(Dataset):
         padding=0,
         padding_central=0,
         padding_tail=0,
+        d_5_set=0,
+        non_overlapping=0,
         transform=None,
     ):
 
@@ -1014,10 +1238,14 @@ class MixedRandomHierarchyModel(Dataset):
         self.fraction_rules = fraction_rules
         self.rule_sequence_type = rule_sequence_type
         self.max_data = max_data
-
-        self.rules = sample_mixed_rules(
-            num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
-        )
+        if non_overlapping==0:
+            self.rules = sample_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
+        else:
+            self.rules = sample_non_overlapping_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
         max_rule_types = int(np.floor((3**num_layers - 1) / 2))
 
         if self.rule_sequence_type == 1:
@@ -1037,7 +1265,7 @@ class MixedRandomHierarchyModel(Dataset):
 
         # tree_structure,input_size,max_data=reconstruct_tree_structure(rule_types,num_classes,m_2,m_3,num_layers)
 
-        if not replacement:
+        if not replacement and d_5_set==0:
             if train_size == -1:
                 samples = torch.arange(self.max_data)
 
@@ -1058,6 +1286,28 @@ class MixedRandomHierarchyModel(Dataset):
                 m_2,
                 m_3,
                 self.rule_sequence_type,
+            )
+
+        if not replacement and d_5_set:
+            if train_size == -1:
+                samples = torch.arange(self.max_data)
+
+            else:
+                # test_size = min( test_size, max_data-train_size)
+                random.seed(seed_sample)
+                print(self.max_data)
+                print(train_size + test_size)
+                samples = torch.tensor(
+                    random.sample(range(self.max_data), train_size + test_size)
+                )
+            print(self.rule_sequence_type)
+
+            self.features, self.labels = sample_data_from_indices_d_5(
+                samples,
+                self.rules,
+                num_classes,
+                m_2,
+                m_3
             )
 
         else:
