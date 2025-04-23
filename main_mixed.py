@@ -236,6 +236,7 @@ parser.add_argument('--model', type=str, help='architecture (fcn, hcnn,hcnn_mixe
 parser.add_argument('--depth', type=int, help='depth of the network')
 parser.add_argument('--final_dim', type=int, help='final dimension for Gen CNN',default=1)
 parser.add_argument('--width', type=int, help='width of the network')
+parser.add_argument('--width_2', type=int, help='width of the top layer')
 parser.add_argument('--bias', default=False, action='store_true')
 parser.add_argument("--seed_model", type=int, help='seed for model initialization')
 '''
