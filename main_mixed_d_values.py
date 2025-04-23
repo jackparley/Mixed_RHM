@@ -188,7 +188,7 @@ def run( args):
 
                                 print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
                                     # Condition to detect a noisy plateau
-                                if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
+                                if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2): 
                                     # Stop if plateauing or consistently increasing (more than 70% of the time)
                                     print("Training stopped: Loss plateau or consistently increasing trend detected.")
                                     train_loss, train_acc = measures.test(model, train_loader, args.device)
@@ -281,7 +281,9 @@ parser.add_argument('--padding', type=int, default=0)
 parser.add_argument('--padding_tail', type=int, default=0)
 parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--return_type', type=int, default=0)
+parser.add_argument('--non_overlapping', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
+parser.add_argument('--d_5_4_set',type=int, default=0)
 '''
 ARCHITECTURE ARGS
 '''
