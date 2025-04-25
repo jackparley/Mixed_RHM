@@ -142,11 +142,12 @@ def init_model_mixed(args):
         model = models.hCNN_sharing(
             in_channels=args.num_features,
             nn_dim=args.width,
+            nn_dim_2=args.width_2,
             out_channels=args.num_classes,
             bias=args.bias,
             norm='mf' #TODO: add arg for different norm
         )
-        args.lr *= args.width #TODO: modify for different norm
+        args.lr *= args.width_2 #TODO: modify for different norm
     elif args.model == 'hcnn_no_sharing':
         model = models.hCNN_no_sharing(
             in_channels=args.num_features,
@@ -156,7 +157,7 @@ def init_model_mixed(args):
             bias=args.bias,
             norm='mf' #TODO: add arg for different norm
         )
-        args.lr *= args.width #TODO: modify for different norm
+        args.lr *= args.width_2 #TODO: modify for different norm
     elif args.model == 'hcnn_inside':
         model = models.hCNN_inside(
             in_channels=args.num_features,
