@@ -841,18 +841,24 @@ class hCNN_no_sharing(nn.Module):
         """
         super().__init__()
 
-        self.hidden = nn.Sequential(
-                (
-                    MyConv1d_no_sharing(in_channels, nn_dim, bias=bias)
+
+        self.conv1 = MyConv1d_no_sharing(in_channels, nn_dim, bias=bias)
+        self.relu1 = nn.ReLU()
+        self.conv2 = MyConv1d_2(nn_dim, nn_dim_2, bias=bias)
+        self.relu2 = nn.ReLU()
+
+        #self.hidden = nn.Sequential(
+         #       (
+          #          MyConv1d_no_sharing(in_channels, nn_dim, bias=bias)
                     
-                ),
-                nn.ReLU(),
-                    (
-                    MyConv1d_2(nn_dim, nn_dim_2, bias=bias)
+           #     ),
+            #    nn.ReLU(),
+             #       (
+              #      MyConv1d_2(nn_dim, nn_dim_2, bias=bias)
                     
-                ),
-                nn.ReLU(),
-            )
+               # ),
+                #nn.ReLU(),
+            #)
 
         self.readout = nn.Parameter(torch.randn(nn_dim_2, out_channels))
         if norm == "std":
@@ -868,10 +874,13 @@ class hCNN_no_sharing(nn.Module):
         Returns:
             Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
         """
-        x = self.hidden(x)
-        x = x.mean(
-            dim=[-1]
-        )  # Global Average Pooling if the final spatial dimension is > 1
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x = self.relu2(x)
+
+
+        #x = self.hidden(x)
         x = x @ self.readout / self.norm
         return x
 
