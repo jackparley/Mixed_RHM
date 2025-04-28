@@ -841,7 +841,6 @@ class hCNN_no_sharing(nn.Module):
         """
         super().__init__()
 
-
         self.conv1 = MyConv1d_no_sharing(in_channels, nn_dim, bias=bias)
         self.relu1 = nn.ReLU()
         self.conv2 = MyConv1d_2(nn_dim, nn_dim_2, bias=bias)
@@ -878,8 +877,8 @@ class hCNN_no_sharing(nn.Module):
         x = self.relu1(x)
         x = self.conv2(x)
         x = self.relu2(x)
-
-
+        #print(x.shape)
+        x = x.squeeze(-1)
         #x = self.hidden(x)
         x = x @ self.readout / self.norm
         return x
