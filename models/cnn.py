@@ -809,9 +809,7 @@ class hCNN_sharing(nn.Module):
             Output of a hierarchical CNN, tensor of size (batch_size, out_dim)
         """
         x = self.hidden(x)
-        x = x.mean(
-            dim=[-1]
-        )  # Global Average Pooling if the final spatial dimension is > 1
+        x = x.squeeze(-1)
         x = x @ self.readout / self.norm
         return x
 
