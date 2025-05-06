@@ -187,7 +187,7 @@ def init_model_mixed(args):
         args.lr *= args.width  # TODO: modify for different norm
     
     elif args.model == "hcnn_inside_L_3":
-        model = models.hCNN_inside_L_2(
+        model = models.hCNN_inside_L_3(
             in_channels=args.num_features,
             nn_dim=args.width,
             out_channels=args.num_classes,
@@ -197,7 +197,7 @@ def init_model_mixed(args):
         args.lr *= args.width  # TODO: modify for different norm
 
     elif args.model == "hcnn_inside_L_4":
-        model = models.hCNN_inside_L_2(
+        model = models.hCNN_inside_L_4(
             in_channels=args.num_features,
             nn_dim=args.width,
             out_channels=args.num_classes,
