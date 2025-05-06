@@ -166,7 +166,7 @@ def init_model_mixed(args):
             bias=args.bias,
             norm="mf",  # TODO: add arg for different norm
         )
-        #args.lr *= args.width_2  # TODO: modify for different norm
+        args.lr *= args.width_2  # TODO: modify for different norm
     elif args.model == "hcnn_inside":
         model = models.hCNN_inside(
             in_channels=args.num_features,
@@ -549,13 +549,8 @@ def init_output(model, criterion, train_loader, test_loader, args):
     return dynamics, best
 
 
-def log2ckpt(end, freq):
-    """
-    Initialise log-spaced iterator.
 
-    Returns:
-        List with integer steps spaced multiplicatively by 2**(1/freq) until end.
-    """
+def log2ckpt(end, freq):
     current = 1.0
     factor = 2 ** (1.0 / freq)
     threshold = 2 ** (math.ceil(math.log(1.0 / (factor - 1))) + 1)
@@ -568,42 +563,59 @@ def log2ckpt(end, freq):
     while round(current) < end:
         checkpoints.append(round(current))
         current *= factor
-
+ 
     checkpoints.append(round(end))
 
     return checkpoints
 
 
-def init_loglinckpt(step, end, freq):
+def init_loglinckpt(step, end, freq, log_linear_switch=1e5):
     """
-    Initialise checkpoint iterator.
+    Initialise checkpoint iterators.
 
+    Args:
+        step: linear step size
+        end: maximum value
+        freq: frequency of checkpoints in logscale
+        log_linear_switch: value (in steps) after which to switch from log to linear growth
     Returns:
-        Two iterators, one for linear and one for logscale. The iterators coincide upt to some multiple of step,
-        then one proceeds linearly in multiples of step and the other logarithmically in factors of 2**(1/freq).
+        Two iterators: linear and mixed (logarithmic first, then linear after switch).
     """
-    # find the correct multiplier
+    # Linear checkpoints (same as before)
     factor = 2 ** (1.0 / freq)
     multiplier = 2 ** (math.ceil(math.log(1.0 / (factor - 1))) + 1)
 
-    # build log2ckpt lists until multiplier*step
     lin_ckpts = log2ckpt(multiplier * step, freq)
-    log_ckpts = lin_ckpts.copy()
-
-    # fill the linear list by adding steps until end
     current = lin_ckpts[-1] + step
     while current <= end:
         lin_ckpts.append(current)
         current += step
     lin_ckpts.append(0)
 
-    # fill the log list by multiplying factors until end
-    current = multiplier * factor
-    while round(current) * step < end:
-        log_ckpts.append(round(current) * step)
+    # Logarithmic until log_linear_switch
+    log_ckpts = []
+    current = 1.0
+    prev = None
+    while current * step < log_linear_switch:
+        prev = round(current) * step
+        log_ckpts.append(prev)
         current *= factor
 
-    log_ckpts.append(round(end))
+    # After reaching log_linear_switch:
+    if prev is None:
+        raise ValueError("log_linear_switch too small, no logarithmic steps generated.")
+
+    # Calculate the last delta seen in log space
+    next_log = round(current) * step
+    last_log_delta = next_log - prev
+    if last_log_delta <= 0:
+        last_log_delta = step  # fallback
+
+    # Now continue linearly with that last_log_delta
+    current = prev + last_log_delta
+    while current <= end:
+        log_ckpts.append(current)
+        current += last_log_delta
     log_ckpts.append(0)
 
     return iter(lin_ckpts), iter(log_ckpts)
