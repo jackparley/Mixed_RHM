@@ -132,15 +132,24 @@ def run( args):
 
                                 print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
                                     # Condition to detect a noisy plateau
-                                if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
-                                    # Stop if plateauing or consistently increasing (more than 70% of the time)
-                                    print("Training stopped: Loss plateau or consistently increasing trend detected.")
-                                    train_loss, train_acc = measures.test(model, train_loader, args.device)
-                                    save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
-                                    dynamics.append(save_dict)
-                                    stop_training = True  # Set flag to stop both loops
-                                    break  # Stop training
-
+                                if args.check_plateau==1:
+                                    if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
+                                        # Stop if plateauing or consistently increasing (more than 70% of the time)
+                                        print("Training stopped: Loss plateau or consistently increasing trend detected.")
+                                        train_loss, train_acc = measures.test(model, train_loader, args.device)
+                                        save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                        dynamics.append(save_dict)
+                                        stop_training = True  # Set flag to stop both loops
+                                        break  # Stop training
+                                else:
+                                    if (slope > 0 and consistency_ratio > 0.2):  
+                                        # Stop if plateauing or consistently increasing (more than 70% of the time)
+                                        print("Training stopped: Loss plateau or consistently increasing trend detected.")
+                                        train_loss, train_acc = measures.test(model, train_loader, args.device)
+                                        save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                        dynamics.append(save_dict)
+                                        stop_training = True  # Set flag to stop both loops
+                                        break  # Stop training
                         #if args.checkpoints:
                          #   output = {
                           #      'model': copy.deepcopy(model.state_dict()),
@@ -249,6 +258,8 @@ parser.add_argument('--momentum', type=float, default=0.0)
 parser.add_argument('--scheduler', type=str, default=None)
 parser.add_argument('--scheduler_time', type=int, default=None)
 parser.add_argument('--max_epochs', type=int, default=100)
+parser.add_argument('--check_plateau', type=int, default=1)
+
 '''
 	OUTPUT ARGS
 '''
