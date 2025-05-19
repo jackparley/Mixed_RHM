@@ -234,7 +234,7 @@ parser.add_argument('--num_layers', metavar='L', type=int, help='number of layer
 parser.add_argument("--seed_rules", type=int, help='seed for the dataset')
 parser.add_argument('--train_size', metavar='Ptr', type=int, help='training set size')
 parser.add_argument('--batch_size', metavar='B', type=int, help='batch size')
-parser.add_argument('--max_data', type=int, help='maximum number of data points')
+parser.add_argument('--max_data', type=int, help='maximum number of data points',default=16384)
 
 #parser.add_argument('--test_size', metavar='Pte', type=int, help='test set size')
 parser.add_argument("--seed_sample", type=int, help='seed for the sampling of train and testset')
@@ -246,6 +246,7 @@ parser.add_argument('--padding_central', type=int, default=0)
 parser.add_argument('--return_type', type=int, default=0)
 parser.add_argument('--non_overlapping', type=int, default=0)
 parser.add_argument('--d_5_set', type=int, default=0)
+parser.add_argument('--d_5_single', type=int, default=0)
 parser.add_argument('--d_5_4_set', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 '''
