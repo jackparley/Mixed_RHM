@@ -1025,7 +1025,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self,
         num_features=8,  # vocabulary size
         num_classes=2,  # number of classes
-        fraction_rules=0.5,  # number of synonymic low-level representations (multiplicity)
+        fraction_rules=1,  # number of synonymic low-level representations (multiplicity)
         s_2=2,
         s_3=3,  # size of the low-level representations
         num_layers=2,
@@ -1045,7 +1045,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
     ):
 
         v = num_features
-        f = fraction_rules
+        f = fraction_rules/v
         m_2 = int(f * v)
         m_3 = int(f * v**2)
         self.num_features = num_features
