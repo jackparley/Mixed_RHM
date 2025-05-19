@@ -132,7 +132,7 @@ def run( args):
 
                                 print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
                                     # Condition to detect a noisy plateau
-                                if args.check_plateau==1:
+                                if args.check_plateau==1 and args.stopping_criteria==1:
                                     if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
                                         # Stop if plateauing or consistently increasing (more than 70% of the time)
                                         print("Training stopped: Loss plateau or consistently increasing trend detected.")
@@ -141,8 +141,8 @@ def run( args):
                                         dynamics.append(save_dict)
                                         stop_training = True  # Set flag to stop both loops
                                         break  # Stop training
-                                else:
-                                    if (slope > 0 and consistency_ratio > 0.2):  
+                                elif args.stopping_criteria==1 and args.check_plateau==0:
+                                    if (slope > 0 and consistency_ratio > 0.5):  
                                         # Stop if plateauing or consistently increasing (more than 70% of the time)
                                         print("Training stopped: Loss plateau or consistently increasing trend detected.")
                                         train_loss, train_acc = measures.test(model, train_loader, args.device)
@@ -169,8 +169,11 @@ def run( args):
                             #with open(args.outname, "wb") as handle:
                              #   pickle.dump(args, handle)
                               #  pickle.dump(output, handle)
-                        save_ckpt = next(save_ckpts)
-
+                        save_ckpt = next(save_ckpts, None)
+                        if save_ckpt is None:
+                            print("No more checkpoints left!")
+                            stop_training = True
+                            break  # Break outer loop if no more checkpoints
         if stop_training:  # Break outer loop
             break
 
@@ -203,9 +206,16 @@ def run( args):
     #filename = 'dynamics.pkl'
 
 # Write the list to a pickle file   
+    end_time = time.time()
+    print('Training time: ', end_time-start_time)
+    training_time = end_time - start_time
+    output_data = {
+        'dynamics': dynamics,
+        'training_time': training_time
+    }
+
     with open(args.outname, 'wb') as file:
-        pickle.dump(dynamics, file)        
-    return None
+        pickle.dump(output_data, file)
 
 torch.set_default_dtype(torch.float32)
 
@@ -218,7 +228,7 @@ parser.add_argument('--dataset', type=str)
 parser.add_argument('--num_features', metavar='v', type=int, help='number of features')
 parser.add_argument('--num_classes', metavar='n', type=int, help='number of classes')
 parser.add_argument('--num_tokens', type=int, help='input length')
-parser.add_argument('--fraction_rules', metavar='f', type=float, help='fraction of rules')
+parser.add_argument('--fraction_rules', metavar='f', type=float, help='fraction of rules,as integer')
 parser.add_argument('--rule_sequence_type', type=int, help='rule sequence type')
 parser.add_argument('--num_layers', metavar='L', type=int, help='number of layers')
 parser.add_argument("--seed_rules", type=int, help='seed for the dataset')
@@ -259,6 +269,9 @@ parser.add_argument('--scheduler', type=str, default=None)
 parser.add_argument('--scheduler_time', type=int, default=None)
 parser.add_argument('--max_epochs', type=int, default=100)
 parser.add_argument('--check_plateau', type=int, default=1)
+parser.add_argument('--stopping_criteria', type=int, default=1)
+
+
 
 '''
 	OUTPUT ARGS
