@@ -1220,12 +1220,13 @@ class MixedRandomHierarchyModel(Dataset):
         padding_central=0,
         padding_tail=0,
         d_5_set=0,
+        d_5_single=0,
         non_overlapping=0,
         transform=None,
     ):
 
         v = num_features
-        f = fraction_rules
+        f = fraction_rules/v
         m_2 = int(f * v)
         m_3 = int(f * v**2)
         self.num_features = num_features
@@ -1237,7 +1238,12 @@ class MixedRandomHierarchyModel(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
         self.rule_sequence_type = rule_sequence_type
-        self.max_data = max_data
+        if d_5_set==1:
+            self.max_data = 2*v*m_2**2*m_3
+        elif d_5_single==1:
+            self.max_data = v*m_2**2*m_3
+        else:  
+            self.max_data = max_data
         if non_overlapping==0:
             self.rules = sample_mixed_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
