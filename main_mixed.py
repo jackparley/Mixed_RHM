@@ -43,7 +43,7 @@ def run( args):
         args.scheduler_time = args.max_iters
     criterion, optimizer, scheduler = init.init_training( model, args)
  
-    print_ckpts, save_ckpts = init.init_loglinckpt( args.print_freq, args.max_iters, freq=args.save_freq)
+    print_ckpts, save_ckpts = init.init_loglinckpt( args.print_freq, args.max_iters, freq=args.save_freq,log_linear_switch=args.log_linear_switch)  
     print_ckpt = next(print_ckpts)
     save_ckpt = next(save_ckpts)
 
@@ -278,7 +278,7 @@ parser.add_argument('--scheduler_time', type=int, default=None)
 parser.add_argument('--max_epochs', type=int, default=100)
 parser.add_argument('--check_plateau', type=int, default=1)
 parser.add_argument('--stopping_criteria', type=int, default=1)
-
+parser.add_argument('--log_linear_switch', type=int, default=int(1e5))
 
 
 '''
