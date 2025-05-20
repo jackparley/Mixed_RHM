@@ -50,7 +50,8 @@ def init_data_mixed(args):
     """
     if args.dataset == "mixed_rhm":
 
-        test_size = min(args.max_data - args.train_size, 20000)
+        #test_size = min(args.max_data - args.train_size, 20000)
+        test_size=20000
         dataset = datasets.MixedRandomHierarchyModel(
             num_features=args.num_features,  # vocabulary size
             num_classes=args.num_classes,  # number of classes
@@ -95,7 +96,7 @@ def init_data_mixed(args):
             whitening=args.whitening,
         )
         print("Dataset loaded")
-
+    rules_rhm = dataset.rules
     trainset = torch.utils.data.Subset(dataset, range(args.train_size))
     train_loader = torch.utils.data.DataLoader(
         trainset, batch_size=args.batch_size, shuffle=True, num_workers=0
@@ -116,7 +117,7 @@ def init_data_mixed(args):
         subset_data_type = [tree_ints[i] for i in subset_indices]
         return train_loader, test_loader_indexed, subset_data_type
     else:
-        return train_loader, test_loader
+        return train_loader, test_loader, rules_rhm
 
 
 def init_model_mixed(args):
