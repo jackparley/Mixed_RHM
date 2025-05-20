@@ -1315,7 +1315,15 @@ class MixedRandomHierarchyModel(Dataset):
                 m_2,
                 m_3
             )
-
+        elif replacement and d_5_set:
+            samples = torch.randint(0, self.max_data, (train_size + test_size,))
+            self.features, self.labels = sample_data_from_indices_d_5(
+                samples,
+                self.rules,
+                num_classes,
+                m_2,
+                m_3 
+            )
         else:
             torch.manual_seed(seed_sample)
             if train_size == -1:
