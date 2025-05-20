@@ -64,6 +64,7 @@ SCHEDULER_TIME=1024
 MAX_EPOCHS=150
 STOPPING_CRITERIA=1
 CHECK_PLATEAU=0
+LOG_LINEAR_SWITCH=1000000
 REPLACEMENT_FLAG="--replacement"
 
 # Define output arguments
@@ -115,6 +116,7 @@ srun python /home/parley/Mixed_RHM/main_mixed.py \
     --max_epochs "$MAX_EPOCHS" \
     --stopping_criteria "$STOPPING_CRITERIA" \
     --check_plateau "$CHECK_PLATEAU" \
+    --log_linear_switch "$LOG_LINEAR_SWITCH" \
     --print_freq "$PRINT_FREQ" \
     --save_freq "$SAVE_FREQ" \
     --loss_threshold "$LOSS_THRESHOLD" \
