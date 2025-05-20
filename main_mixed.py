@@ -34,7 +34,7 @@ def run( args):
     args.num_batches = args.train_size//args.batch_size
     args.max_iters = args.max_epochs*args.num_batches
 
-    train_loader, test_loader = init.init_data_mixed( args)
+    train_loader, test_loader,rules_rhm = init.init_data_mixed( args)
 
     model = init.init_model_mixed( args)
     model0 = copy.deepcopy( model)
@@ -158,17 +158,19 @@ def run( args):
                             #}
                             #with open(args.outname+f'_t{step}', "wb") as handle:
                              #   pickle.dump(output, handle)
-                        #else:
-                         #   output = {
-                          #      'init': model0.state_dict(),
-                           #     'best': best,
-                            #    'model': copy.deepcopy(model.state_dict()),
-                             #   'dynamics': dynamics,
-                              #  'step': step
-                            #}
-                            #with open(args.outname, "wb") as handle:
-                             #   pickle.dump(args, handle)
-                              #  pickle.dump(output, handle)
+                        if args.checkpoints:
+                            output = {
+                                'init': model0.state_dict(),
+                                'best': best,
+                                'model': copy.deepcopy(model.state_dict()),
+                                'dynamics': dynamics,
+                                'step': step
+                            }
+                            if args.rules:
+                                output['rules'] = rules_rhm
+                            with open(args.outname, "wb") as handle:
+                                pickle.dump(args, handle)
+                                pickle.dump(output, handle)
                         save_ckpt = next(save_ckpts, None)
                         if save_ckpt is None:
                             print("No more checkpoints left!")
@@ -191,21 +193,23 @@ def run( args):
                 #}
                 #with open(args.outname+f'_t{step}', "wb") as handle:
                  #   pickle.dump(output, handle)
-            #else:
-             #   output = {
-              #      'init': model0.state_dict(),
-               #     'best': best,
-                #    'model': copy.deepcopy(model.state_dict()),
-                 #   'dynamics': dynamics,
-                  #  'step': step
-                #}
-                #with open(args.outname, "wb") as handle:
-                 #   pickle.dump(args, handle)
-                  #  pickle.dump(output, handle)
+            if args.checkpoints:
+                output = {
+                    'init': model0.state_dict(),
+                    'best': best,
+                    'model': copy.deepcopy(model.state_dict()),
+                    'dynamics': dynamics,
+                    'step': step
+                }
+                with open(args.outname, "wb") as handle:
+                    pickle.dump(args, handle)
+                    pickle.dump(output, handle)
             break
     #filename = 'dynamics.pkl'
 
 # Write the list to a pickle file   
+
+
     end_time = time.time()
     print('Training time: ', end_time-start_time)
     training_time = end_time - start_time
@@ -216,6 +220,9 @@ def run( args):
 
     with open(args.outname, 'wb') as file:
         pickle.dump(output_data, file)
+
+
+
 
 torch.set_default_dtype(torch.float32)
 
@@ -278,6 +285,8 @@ parser.add_argument('--stopping_criteria', type=int, default=1)
 	OUTPUT ARGS
 '''
 parser.add_argument('--print_freq', type=int, help='frequency of prints', default=16)
+parser.add_argument('--rules', default=False, action='store_true')
+
 parser.add_argument('--save_freq', type=int, help='frequency of saves', default=2)
 parser.add_argument('--checkpoints', default=False, action='store_true')
 parser.add_argument('--loss_threshold', type=float, default=1e-3)
