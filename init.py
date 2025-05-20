@@ -590,7 +590,7 @@ def log2ckpt(end, freq):
     return checkpoints
 
 
-def init_loglinckpt(step, end, freq, log_linear_switch=1e5):
+def init_loglinckpt(step, end, freq, log_linear_switch):
     """
     Initialise checkpoint iterators.
 
