@@ -73,6 +73,7 @@ def init_data_mixed(args):
             replacement=args.replacement,
             d_5_set=args.d_5_set,
             non_overlapping=args.non_overlapping,
+            check_overlap=args.check_overlap,
         )
     elif args.dataset == "mixed_rhm_varying_tree":
         test_size = 20000
@@ -113,6 +114,11 @@ def init_data_mixed(args):
     )
     if args.return_type == 1:
         tree_ints = dataset.tree_types
+        subset_indices = range(args.train_size, args.train_size + test_size)
+        subset_data_type = [tree_ints[i] for i in subset_indices]
+        return train_loader, test_loader_indexed, subset_data_type
+    elif args.check_overlap==1:
+        tree_ints = dataset.overlap_flags
         subset_indices = range(args.train_size, args.train_size + test_size)
         subset_data_type = [tree_ints[i] for i in subset_indices]
         return train_loader, test_loader_indexed, subset_data_type
