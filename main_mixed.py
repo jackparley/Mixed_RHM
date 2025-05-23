@@ -102,6 +102,16 @@ def run( args):
                         train_loss, train_acc = measures.test(model, train_loader, args.device)
                         save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
                         dynamics.append(save_dict)
+                        end_time = time.time()
+                        print('Training time: ', end_time-start_time)
+                        training_time = end_time - start_time
+                        output_data = {
+                            'dynamics': dynamics,
+                            'training_time': training_time
+                        }
+
+                        with open(args.outname, 'wb') as file:
+                            pickle.dump(output_data, file)
 
                          # Store (1 - test_acc) in the deque
                         test_loss_window.append(test_loss)
@@ -133,9 +143,17 @@ def run( args):
                                 print(f"Test loss slope: {slope}, Consistency Ratio: {consistency_ratio}")
                                     # Condition to detect a noisy plateau
                                 if args.check_plateau==1 and args.stopping_criteria==1:
-                                    if (variation < 0.12 and var_step > 5000) or (slope > 0 and consistency_ratio > 0.2):  
+                                    if (variation < 0.12 and var_step > 5000 and step > 5e4):  
                                         # Stop if plateauing or consistently increasing (more than 70% of the time)
                                         print("Training stopped: Loss plateau or consistently increasing trend detected.")
+                                        train_loss, train_acc = measures.test(model, train_loader, args.device)
+                                        save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
+                                        dynamics.append(save_dict)
+                                        stop_training = True  # Set flag to stop both loops
+                                        break  # Stop training
+                                    elif (slope > 0 and consistency_ratio > 0.2):
+                                        # Stop if plateauing or consistently increasing (more than 70% of the time)
+                                        print("Training stopped: consistently increasing trend detected.")
                                         train_loss, train_acc = measures.test(model, train_loader, args.device)
                                         save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc}
                                         dynamics.append(save_dict)
@@ -256,6 +274,7 @@ parser.add_argument('--d_5_set', type=int, default=0)
 parser.add_argument('--d_5_single', type=int, default=0)
 parser.add_argument('--d_5_4_set', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
+parser.add_argument('--check_overlap',default=0, type=int)
 '''
 	ARCHITECTURE ARGS
 '''
