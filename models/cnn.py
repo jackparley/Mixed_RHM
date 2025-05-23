@@ -992,6 +992,61 @@ class hCNN_Gen(nn.Module):
         return x
 
 
+class hCNN_Gen_MLP(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        nn_dim,
+        out_channels,
+        num_layers,
+        final_dim,
+        mlp_dim,      # New argument for hidden dimension in MLP
+        bias=False,
+        norm="std",
+    ):
+        super().__init__()
+        filter_size = 4
+        stride_length = 2
+
+        self.hidden = nn.Sequential(
+            nn.Sequential(
+                MyConv1d(in_channels, nn_dim, filter_size, stride=stride_length, bias=bias),
+                nn.ReLU(),
+            ),
+            *[
+                nn.Sequential(
+                    MyConv1d(nn_dim, nn_dim, filter_size, stride=stride_length, bias=bias),
+                    nn.ReLU(),
+                )
+                for _ in range(1, num_layers)
+            ],
+        )
+
+        self.nn_dim = nn_dim
+        self.final_dim = final_dim
+        flattened_dim = nn_dim * final_dim
+
+        # New MLP layer before readout
+        self.mlp = nn.Sequential(
+            nn.Linear(flattened_dim, mlp_dim),
+            nn.ReLU()
+        )
+
+        # Readout layer
+        self.readout = nn.Parameter(torch.randn(mlp_dim, out_channels))
+
+        if norm == "std":
+            self.norm = mlp_dim ** 0.5
+        elif norm == "mf":
+            self.norm = mlp_dim
+
+    def forward(self, x):
+        x = self.hidden(x)  # (batch_size, nn_dim, final_dim)
+        batch_size = x.shape[0]
+        x = x.reshape(batch_size, self.nn_dim * self.final_dim)
+        x = self.mlp(x)  # Pass through MLP layer
+        x = x @ self.readout / self.norm
+        return x
 
 
 
