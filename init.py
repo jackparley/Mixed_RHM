@@ -154,6 +154,18 @@ def init_model_mixed(args):
             norm="mf",  # TODO: add arg for different norm
         )
         args.lr *= args.width  # TODO: modify for different norm
+    elif args.model == "hcnn_Gen_MLP":
+        model = models.hCNN_Gen(
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            num_layers=args.depth,
+            final_dim=args.final_dim,
+            mlp_dim=args.mlp_dim,
+            bias=args.bias,
+            norm="mf",  # TODO: add arg for different norm
+        )
+        args.lr *= args.width  # TODO: modify for different norm
     elif args.model == "hcnn_sharing":
         model = models.hCNN_sharing(
             in_channels=args.num_features,
