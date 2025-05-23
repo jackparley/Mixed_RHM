@@ -262,6 +262,89 @@ def sample_data_from_indices_d_5(
     labels = torch.tensor(labels)
     return concatenated_features, labels
 
+
+def sample_data_from_indices_d_5_check_overlap(
+    samples, rules, n, m_2, m_3
+):
+    L = len(rules)
+    Pmax=n*m_2*m_3*m_2
+    all_features = []
+    labels = []
+    overlap_flags = []
+    #samples = samples + 1
+    for sample in samples:
+        chosen_rules = index_to_choice_d_5(sample, n, m_2, m_3)
+        labels.append(chosen_rules[0] - 1)
+        # print(chosen_rules[0])
+        chosen_rules = [x - 1 for x in chosen_rules]
+        # for label in labels:
+        # Initialize the current symbols with the start symbol
+        current_symbols = [chosen_rules[0]]
+
+        # Sequentially apply rules for each layer
+        k = 0
+        k_2 = 1
+        if sample <Pmax:
+            rule_types = [0, 1, 0]
+        else:
+            rule_types = [0, 0, 1]
+        
+        #for layer in range(0, L):  # 1 to 3 (3 layers)
+        layer=0
+        new_symbols = []
+        for symbol in current_symbols:
+            rule_type = rule_types[k]
+            k = k + 1
+            # print(rule_type)
+            rule_tensor = rules[layer][rule_type]
+            # chosen_rule=torch.randint(low=0,high=rule_tensor.shape[1],size=(1,)).item()
+            chosen_rule = chosen_rules[k_2]
+            k_2 = k_2 + 1
+            new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+        # print(new_symbols)
+        # new_symbols=new_symbols[0]
+        # print(new_symbols)
+        if new_symbols != []:
+            current_symbols = new_symbols
+        features = torch.tensor(new_symbols)
+
+        
+        
+        layer=1
+        rule_tensor = rules[layer][0]
+        binary_rule_set = set(map(tuple, rule_tensor.view(-1, 2).tolist()))
+        new_symbols = []
+        for symbol in current_symbols:
+            rule_type = rule_types[k]
+            k = k + 1
+            # print(rule_type)
+            rule_tensor = rules[layer][rule_type]
+            # chosen_rule=torch.randint(low=0,high=rule_tensor.shape[1],size=(1,)).item()
+            chosen_rule = chosen_rules[k_2]
+            k_2 = k_2 + 1
+            new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+            if rule_type==1:
+                (a, b, c)=rule_tensor[symbol, chosen_rule].tolist()
+                if (a, b) in binary_rule_set or (b, c) in binary_rule_set:
+                    #print("Binary overlap")
+                    overlap_flags.append(1)
+                else:
+                    overlap_flags.append(0)
+
+        # print(new_symbols)
+        # new_symbols=new_symbols[0]
+        # print(new_symbols)
+        if new_symbols != []:
+            current_symbols = new_symbols
+        features = torch.tensor(new_symbols)
+
+
+        all_features.append(features)
+    concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
+    labels = torch.tensor(labels)
+    print("fraction with overlaps:", sum(overlap_flags)/len(overlap_flags))
+    return concatenated_features, labels, overlap_flags
+
 def sample_data_from_indices_fixed_tree(
     samples, rules, rule_types, n, m_2, m_3, rule_sequence_type
 ):
@@ -1222,6 +1305,7 @@ class MixedRandomHierarchyModel(Dataset):
         d_5_set=0,
         d_5_single=0,
         non_overlapping=0,
+        check_overlap=0,
         transform=None,
     ):
 
@@ -1315,7 +1399,7 @@ class MixedRandomHierarchyModel(Dataset):
                 m_2,
                 m_3
             )
-        elif replacement and d_5_set:
+        elif replacement and d_5_set and check_overlap==0:
             samples = torch.randint(0, self.max_data, (train_size + test_size,))
             self.features, self.labels = sample_data_from_indices_d_5(
                 samples,
@@ -1324,6 +1408,17 @@ class MixedRandomHierarchyModel(Dataset):
                 m_2,
                 m_3 
             )
+        elif replacement and d_5_set and check_overlap==1:
+            samples = torch.randint(0, self.max_data, (train_size + test_size,))
+            self.features, self.labels,self.overlap_flags = sample_data_from_indices_d_5_check_overlap(
+                samples,
+                self.rules,
+                num_classes,
+                m_2,
+                m_3 
+            )
+            print("overlap flags")
+
         else:
             torch.manual_seed(seed_sample)
             if train_size == -1:
