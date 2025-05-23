@@ -285,6 +285,7 @@ parser.add_argument('--width', type=int, help='width of the network')
 parser.add_argument('--width_2', type=int, help='width of the top layer')
 parser.add_argument('--bias', default=False, action='store_true')
 parser.add_argument("--seed_model", type=int, help='seed for model initialization')
+parser.add_argument('--mlp_dim', type=int, default=256)
 '''
        TRAINING ARGS
 '''
