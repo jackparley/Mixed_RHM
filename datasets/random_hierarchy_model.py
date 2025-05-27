@@ -660,6 +660,67 @@ def sample_data_from_labels_varying_tree_d_5_4(labels, rules, num_features, d_ma
     return concatenated_features, labels,tree_types
 
 
+def sample_data_from_labels_varying_tree_top_ter(labels, rules, num_features, d_max):
+    L = len(rules)
+    all_features = []
+    tree_types = []
+    for label in labels:
+        while True:  # Keep trying until we get a sequence length not equal to 6
+            current_symbols = [label]
+            new_symbols = []
+
+            # --- Layer 0 ---
+            layer = 0
+            for symbol in current_symbols:
+                rule_type = 1  # Or any deterministic value or strategy
+                rule_tensor = rules[layer][rule_type]
+                chosen_rule = torch.randint(low=0, high=rule_tensor.shape[1], size=(1,)).item()
+                new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+
+            if new_symbols != []:
+                current_symbols = new_symbols
+            #features = torch.tensor(new_symbols)
+
+            # --- Layer 1 ---
+            layer = 1
+            for symbol in current_symbols:
+                rule_type = torch.randint(low=0, high=2, size=(1,)).item()
+                rule_tensor = rules[layer][rule_type]
+                chosen_rule = torch.randint(low=0, high=rule_tensor.shape[1], size=(1,)).item()
+                new_symbols.extend(rule_tensor[symbol, chosen_rule].tolist())
+
+            if new_symbols != []:
+                current_symbols = new_symbols
+            features = torch.tensor(new_symbols)
+
+            d = len(features)
+
+            if d == 6:
+                continue  # Reject and sample from scratch
+            else:
+                break  # Accept this sequence and move to the next label
+
+    # Now `features` has a valid sequence (d != 6), and you can proceed
+
+        tree_types.append(len(features)-3)
+        if len(features) < d_max:
+            features = torch.cat(
+                [
+                    features,
+                    num_features
+                    * torch.ones(d_max - len(features), dtype=torch.int64),
+                ]
+            )
+        all_features.append(features)
+        
+
+        
+
+    concatenated_features = torch.cat(all_features).reshape(len(labels), -1)
+    return concatenated_features, labels,tree_types
+
+
+
 def create_probabilities(m_2, m_3, L):
     probabilities = {}
     for l in range(L):
@@ -782,6 +843,65 @@ def sample_data_from_labels_varying_tree_tensorized(
         result[i, :num_real_symbols] = real_features[i]
         result[i, num_real_symbols:] = num_features
     return result, labels
+
+
+def sample_data_from_labels_varying_tree_tensorized_top_ter_d_values(
+    labels, rules, probability, num_features, d_max,m_2,m_3
+):
+    """
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
+
+    Args:
+        labels: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
+        rules: A dictionary containing the rules for each level of the hierarchy.
+        probability: A dictionary containing the distribution of the rules for each level of the hierarchy.
+
+    Returns:
+        A tuple containing the inputs and outputs of the model.
+    """
+    L = len(rules)  # Number of levels in the hierarchy
+
+    features = labels
+
+    l=0
+    chosen_rule = torch.randint(
+    low=m_2, 
+    high=m_2 + m_3, 
+    size=features.shape, 
+    )
+    features = rules[l][features, chosen_rule].flatten(
+        start_dim=1
+    )  # Apply the chosen rule to each variable in the current level
+    l=1
+    chosen_rule = torch.multinomial(
+        probability[l], features.numel(), replacement=True
+    ).reshape(
+        features.shape
+    )  # Choose a rule for each variable in the current level according to probability[l]
+    features = rules[l][features, chosen_rule].flatten(
+        start_dim=1
+    )  # Apply the chosen rule to each variable in the current level
+
+
+    mask = features == num_features
+
+    # Count the number of fake symbols in each row
+    num_fake_symbols = mask.sum(dim=1)
+
+    # Create a tensor to hold the final result
+    result = torch.zeros_like(features)
+    num_data = features.shape[0]  # Number of data points
+    # Remove the fake symbols and keep the original order of the rest of the elements
+    real_features = [features[i, ~mask[i]] for i in range(num_data)]
+    # print(real_features)
+    # Fill the result tensor with real features and append fake symbols at the end
+    tree_types=[]
+    for i in range(num_data):
+        num_real_symbols = d_max - num_fake_symbols[i]
+        result[i, :num_real_symbols] = real_features[i]
+        result[i, num_real_symbols:] = num_features
+        tree_types.append(num_real_symbols.item()-3) 
+    return result, labels,tree_types
 
 
 def sample_data_from_labels_varying_tree_tensorized_padding_central(
@@ -1122,6 +1242,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         padding_central=0,
         return_type=0,
         non_overlapping=0,
+        top_ter=0,
         input_format="onehot",
         whitening=0,
         transform=None,
@@ -1140,18 +1261,23 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
         
-        if return_type==1 and d_5_4_set==0:
+        if return_type==1 and d_5_4_set==0 and non_overlapping==0 and top_ter==0:
             #self.rules = sample_mixed_rules(
              #   num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             #)
             self.rules = sample_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
-        elif return_type==0 and non_overlapping==1:
+        elif non_overlapping==1:
             self.rules = sample_non_overlapping_padded_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
+
         elif d_5_set==1 or d_5_4_set==1:
+            self.rules = sample_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
+        elif top_ter==1 and return_type==1:
             self.rules = sample_mixed_rules(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
@@ -1181,7 +1307,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     d_max,
                 )
             )
-        elif return_type and d_5_4_set==0:
+        elif return_type and d_5_4_set==0 and top_ter==0:
             #self.features, self.labels, self.tree_types = (
              #   sample_data_from_labels_varying_tree(
               #      labels, self.rules, num_features, d_max
@@ -1195,7 +1321,10 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
 
         elif return_type and d_5_4_set:
             self.features,self.labels,self.tree_types=sample_data_from_labels_varying_tree_d_5_4(labels, self.rules, num_features, d_max)
-
+        elif top_ter and return_type==1:
+            self.features, self.labels, self.tree_types  = sample_data_from_labels_varying_tree_top_ter(
+                labels, self.rules, num_features, d_max
+            )
         else:
             self.features, self.labels = (
                 sample_data_from_labels_varying_tree_tensorized(
@@ -1240,15 +1369,26 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             # print(sum_of_squares)
 
             if padding_tail:
-                pad_size = 1
-                pad_tensor = torch.zeros(
-                    batch_size,
-                    num_features,
-                    pad_size,
-                    device=self.features.device,
-                    dtype=self.features.dtype,
-                )
-                self.features = torch.cat((self.features, pad_tensor), dim=2)
+                if num_layers==2:
+                    pad_size = 1
+                    pad_tensor = torch.zeros(
+                        batch_size,
+                        num_features,
+                        pad_size,
+                        device=self.features.device,
+                        dtype=self.features.dtype,
+                    )
+                    self.features = torch.cat((self.features, pad_tensor), dim=2)
+                elif num_layers==3:
+                    pad_size = 3
+                    pad_tensor = torch.zeros(
+                        batch_size,
+                        num_features,
+                        pad_size,
+                        device=self.features.device,
+                        dtype=self.features.dtype,
+                    )
+                    self.features = torch.cat((self.features, pad_tensor), dim=2)
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
