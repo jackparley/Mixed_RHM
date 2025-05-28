@@ -92,6 +92,7 @@ def init_data_mixed(args):
             padding_central=args.padding_central,
             return_type=args.return_type,
             d_5_4_set=args.d_5_4_set,
+            top_ter=args.top_ter,
             non_overlapping=args.non_overlapping,
             input_format=args.input_format,
             whitening=args.whitening,
@@ -154,8 +155,17 @@ def init_model_mixed(args):
             norm="mf",  # TODO: add arg for different norm
         )
         args.lr *= args.width  # TODO: modify for different norm
+    elif args.model == "hcnn_no_sharing_Gen":
+        model = models.hCNN_no_sharing_Gen(
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            bias=args.bias,
+            norm="mf",  # TODO: add arg for different norm
+        )
+        args.lr *= args.width  # TODO: modify for different norm
     elif args.model == "hcnn_Gen_MLP":
-        model = models.hCNN_Gen(
+        model = models.hCNN_Gen_MLP(
             in_channels=args.num_features,
             nn_dim=args.width,
             out_channels=args.num_classes,
