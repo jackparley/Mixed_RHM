@@ -92,6 +92,8 @@ def init_data_mixed(args):
             padding_central=args.padding_central,
             return_type=args.return_type,
             d_5_4_set=args.d_5_4_set,
+            eta_set=args.eta_set,
+            eta=args.eta,
             top_ter=args.top_ter,
             non_overlapping=args.non_overlapping,
             input_format=args.input_format,
