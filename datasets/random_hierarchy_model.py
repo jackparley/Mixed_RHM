@@ -731,6 +731,18 @@ def create_probabilities(m_2, m_3, L):
     return probabilities
 
 
+def create_probabilities_eta(m_2, m_3, L,eta ):
+    probabilities = {}
+    p_3=1/(m_2*eta+m_3)
+    p_2=eta*p_3
+    for l in range(L):
+        prob = torch.cat(
+            (torch.full((m_2,), p_2), torch.full((m_3,), p_3))
+        )
+        probabilities[l] = prob
+    return probabilities
+
+
 
 def sample_data_from_labels_varying_tree_tensorized_d_values(
     labels, rules, probability, num_features, d_max,m_2
@@ -1238,6 +1250,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         test_size=0,
         d_5_set=0,
         d_5_4_set=0,
+        eta_set=0,
+        eta=1,
         padding_tail=0,
         padding_central=0,
         return_type=0,
@@ -1260,6 +1274,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_2 = s_2
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
+        eta=v/eta
+        self.eta=eta
         
         if return_type==1 and d_5_4_set==0 and non_overlapping==0 and top_ter==0:
             #self.rules = sample_mixed_rules(
@@ -1307,7 +1323,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     d_max,
                 )
             )
-        elif return_type and d_5_4_set==0 and top_ter==0:
+        elif return_type and d_5_4_set==0 and top_ter==0 and eta_set==0:
             #self.features, self.labels, self.tree_types = (
              #   sample_data_from_labels_varying_tree(
               #      labels, self.rules, num_features, d_max
@@ -1316,6 +1332,17 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             self.features, self.labels, self.tree_types = (
                 sample_data_from_labels_varying_tree_tensorized_d_values(
                     labels, self.rules,create_probabilities(m_2, m_3, num_layers), num_features, d_max, m_2
+                )
+            )
+        elif return_type and d_5_4_set==0 and top_ter==0 and eta_set==1:
+            #self.features, self.labels, self.tree_types = (
+             #   sample_data_from_labels_varying_tree(
+              #      labels, self.rules, num_features, d_max
+               # )
+            #)
+            self.features, self.labels, self.tree_types = (
+                sample_data_from_labels_varying_tree_tensorized_d_values(
+                    labels, self.rules,create_probabilities_eta(m_2, m_3, num_layers,eta), num_features, d_max, m_2
                 )
             )
 
