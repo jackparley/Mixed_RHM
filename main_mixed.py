@@ -117,7 +117,7 @@ def run( args):
                         test_loss_window.append(test_loss)
                         step_window.append(step)
 
-                        if step > 1e2:
+                        if step > args.min_steps:
                             max_val = max(test_loss_window)
                             min_val = min(test_loss_window)
                             min_step = min(step_window)
@@ -275,6 +275,7 @@ parser.add_argument('--d_5_single', type=int, default=0)
 parser.add_argument('--d_5_4_set', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 parser.add_argument('--check_overlap',default=0, type=int)
+parser.add_argument('--top_ter',default=0, type=int)
 '''
 	ARCHITECTURE ARGS
 '''
@@ -298,6 +299,7 @@ parser.add_argument('--scheduler_time', type=int, default=None)
 parser.add_argument('--max_epochs', type=int, default=100)
 parser.add_argument('--check_plateau', type=int, default=1)
 parser.add_argument('--stopping_criteria', type=int, default=1)
+parser.add_argument('--min_steps', type=int, default=100)
 parser.add_argument('--log_linear_switch', type=int, default=int(1e5))
 
 
