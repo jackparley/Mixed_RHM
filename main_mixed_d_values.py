@@ -308,8 +308,64 @@ def run( args):
             break
 
         if (running_loss/(batch_idx+1)) <= args.loss_threshold:
+        
 
             train_loss, train_acc = measures.test(model, train_loader, args.device)
+
+            type_losses = defaultdict(list)
+            type_correct = defaultdict(int)
+            type_counts = defaultdict(int)
+            with torch.no_grad():
+                for inputs, labels, indices in test_loader_indexed:
+                    inputs = inputs.to(args.device)
+                    labels = labels.to(args.device)
+                
+                    outputs = model(inputs)
+                
+                    # Compute loss for the batch (element-wise)
+                    losses = F.cross_entropy(outputs, labels, reduction='none')
+                
+                    # Predicted classes
+                    preds = outputs.argmax(dim=1)
+                    #sum_of_squares = torch.sum(inputs**2, dim=(1, 2), keepdim=True)
+                    #sum_of_squares = torch.round(sum_of_squares).to(torch.int)
+                    #sum_of_squares = sum_of_squares.squeeze()-4  #Indices from 0 to 8
+
+                
+                    for i in range(len(labels)):
+                        #type_id = sum_of_squares[i].item()  # Lookup type (0 to 6)
+                        #print("type_id_old:", type_id)
+                        type_id=data_type[indices[i]]
+                        #print("type_id_new:", type_id)
+                        type_losses[type_id].append(losses[i].item())
+                        type_correct[type_id] += (preds[i] == labels[i]).item()
+                        type_counts[type_id] += 1
+
+            # Compute metrics per type
+            counts_sum=0
+            loss_sum = 0
+            correct_sum = 0
+            avg_losses=np.zeros(7)
+            avg_accs=np.zeros(7)
+            for type_id in range(7):
+                if type_counts[type_id] == 0:
+                    #print(f"Type {type_id}: No samples.")
+                    continue
+                avg_loss = sum(type_losses[type_id]) / type_counts[type_id]
+                avg_losses[type_id]=avg_loss
+                accuracy = type_correct[type_id] / type_counts[type_id]
+                avg_accs[type_id]=accuracy
+                print(f"Type {type_id}: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
+                counts_sum += type_counts[type_id]
+                loss_sum += sum(type_losses[type_id])
+                correct_sum += type_correct[type_id]
+            print(f"Total: Loss = {loss_sum/counts_sum:.4f}, Accuracy = {correct_sum/counts_sum:.4f}")
+
+            test_loss = loss_sum/counts_sum
+            test_acc = correct_sum/counts_sum# Initialize storage for each type
+
+
+
             save_dict = {'t': step, 'trainloss': train_loss, 'trainacc': train_acc, 'testloss': test_loss, 'testacc': test_acc, 'avg_losses': avg_losses, 'avg_accs': avg_accs}
             dynamics.append(save_dict)
 
@@ -378,7 +434,7 @@ parser.add_argument('--non_overlapping', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 parser.add_argument('--d_5_4_set',type=int, default=0)
 parser.add_argument('--check_overlap',default=0, type=int)
-
+parser.add_argument('--top_ter',default=0, type=int)
 
 
 '''
