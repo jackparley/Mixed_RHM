@@ -459,8 +459,8 @@ def sample_non_overlapping_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
             break
         (a, b, c) = t
         if (a, b) in binary_rule_set or (b, c) in binary_rule_set:
-            print("Binary overlap")
-            print(t)
+            #print("Binary overlap")
+            #print(t)
             continue
         if t in used_ternary_rules:
             continue
@@ -1275,6 +1275,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
         eta=v/eta
+        #eta=eta*v
         self.eta=eta
         
         if return_type==1 and d_5_4_set==0 and non_overlapping==0 and top_ter==0:
