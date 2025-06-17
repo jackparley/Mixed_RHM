@@ -10,5 +10,6 @@ from .cnn import hCNN_no_sharing
 from .cnn import hCNN_no_sharing_Gen
 from .cnn import hCNN_Gen
 from .cnn import hCNN_Gen_MLP
+from .cnn import hCNN_Gen_top_fix
 from .lcn import hLCN
 from .transformer import MultiHeadAttention, MLA
