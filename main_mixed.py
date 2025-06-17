@@ -276,6 +276,9 @@ parser.add_argument('--d_5_4_set', type=int, default=0)
 parser.add_argument('--replacement', default=False, action='store_true')
 parser.add_argument('--check_overlap',default=0, type=int)
 parser.add_argument('--top_ter',default=0, type=int)
+parser.add_argument('--eta_set',default=0, type=int)
+parser.add_argument('--eta',default=8, type=int)
+
 '''
 	ARCHITECTURE ARGS
 '''
