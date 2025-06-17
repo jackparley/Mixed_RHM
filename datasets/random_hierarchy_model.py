@@ -1417,6 +1417,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                         dtype=self.features.dtype,
                     )
                     self.features = torch.cat((self.features, pad_tensor), dim=2)
+                elif num_layers==4:
+                    self.features=self.features
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
