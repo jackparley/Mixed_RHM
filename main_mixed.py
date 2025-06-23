@@ -67,6 +67,10 @@ def run( args):
     step_window = collections.deque(maxlen=window_size)
     stop_training = False  # Flag to signal when to stop training
 
+    # Optionally write header once at the start
+    with open(args.outname_2, 'w') as file:
+        file.write('step\ttrain_loss\ttrain_acc\ttest_loss\ttest_acc\ttraining_time\n')
+
     for epoch in range(args.max_epochs):
 
         model.train()
@@ -112,6 +116,8 @@ def run( args):
 
                         with open(args.outname, 'wb') as file:
                             pickle.dump(output_data, file)
+                        with open(args.outname_2, 'a') as file:
+                            file.write(f"{step}\t{train_loss:.6f}\t{train_acc:.6f}\t{test_loss:.6f}\t{test_acc:.6f}\t{training_time:.4f}\n")
 
                          # Store (1 - test_acc) in the deque
                         test_loss_window.append(test_loss)
@@ -238,6 +244,8 @@ def run( args):
 
     with open(args.outname, 'wb') as file:
         pickle.dump(output_data, file)
+    with open(args.outname_2, 'a') as file:
+        file.write(f"{step}\t{train_loss:.6f}\t{train_acc:.6f}\t{test_loss:.6f}\t{test_acc:.6f}\t{training_time:.4f}\n")
 
 
 
@@ -316,6 +324,8 @@ parser.add_argument('--save_freq', type=int, help='frequency of saves', default=
 parser.add_argument('--checkpoints', default=False, action='store_true')
 parser.add_argument('--loss_threshold', type=float, default=1e-3)
 parser.add_argument('--outname', type=str, required=True, help='path of the output file')
+parser.add_argument('--outname_2', type=str, required=True, help='path of the output file')
+
 
 args = parser.parse_args()
 run( args)
