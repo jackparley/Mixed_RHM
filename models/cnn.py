@@ -1422,6 +1422,22 @@ class ComputeSumOfSquares(nn.Module):
         return x, sum_of_squares  # Returning a tuple
 
 
+class TensorChopping(nn.Module):
+    def forward(self, x):
+        """
+        Args:
+            x: Tensor of shape (batch_size, num_features, input_length + 1)
+        
+        Returns:
+            original_x: Tensor of shape (batch_size, num_features, input_length)
+            tree_topologies: Tensor of shape (batch_size,)
+        """
+        # Separate the last slice
+        original_x = x[:, :, :-1]  # Drop last column
+        tree_topologies = x[:, 0, -1].long()  # Take topology info from the first feature
+        return original_x, tree_topologies
+
+
 class TupleReLU(nn.Module):
     def __init__(self):
         super().__init__()
@@ -1904,6 +1920,206 @@ class MyConv1d_ell_2_last(nn.Module):
         )
 
         return interleaved_out, sum_of_squares  # Return tuple
+
+
+
+
+class MyConv1d_ell_2_last_tree_topologies(nn.Module):
+    def __init__(self, in_channels, out_channels, bias=False):
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to include a bias term
+        """
+        super().__init__()
+        self.filter_size_2 = 2
+        self.filter_size_3 = 3
+
+        # Two separate filters
+        self.filter_2 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_2)
+        )
+        self.filter_3 = nn.Parameter(
+            torch.randn(out_channels, in_channels, self.filter_size_3)
+        )
+
+        l = 2
+        self.n = 9
+        self.min_d = 2**l
+        self.max_d = 3 ** (l)
+        self.min_split = 2 ** (l - 1)
+        self.max_split = 3 ** (l - 1)
+        self.n_span = 3 ** (l - 1) - 2 ** (l - 1) + 1
+        # Dictionary to store kk_0 lists
+        self.stride = self.n_span*self.n
+
+        self.kk_0_dict = {}
+        self.pairs_0_dict = {}
+
+
+        self.kk_0_dict[0]=[2]
+        self.kk_0_dict[1]=[2]
+        self.kk_0_dict[2]=[3]
+        self.kk_0_dict[3]=[3]
+        self.kk_0_dict[4]=[]
+        self.kk_0_dict[5]=[]
+        self.kk_0_dict[6]=[]
+        self.kk_0_dict[7]=[]  
+        self.kk_0_dict[8]=[]
+        self.kk_0_dict[9]=[]
+        self.kk_0_dict[10]=[]
+        self.kk_0_dict[11]=[]
+
+        self.pairs_0_dict[0]=torch.empty((0, 2), dtype=torch.int32)
+        self.pairs_0_dict[1]=torch.empty((0, 2), dtype=torch.int32)
+        self.pairs_0_dict[2]=torch.empty((0, 2), dtype=torch.int32)
+        self.pairs_0_dict[3]=torch.empty((0, 2), dtype=torch.int32)
+        self.pairs_0_dict[4]=torch.tensor([[2, 4]], dtype=torch.int32)
+        self.pairs_0_dict[5]=torch.tensor([[3, 5]], dtype=torch.int32)
+        self.pairs_0_dict[6]=torch.tensor([[2, 5]], dtype=torch.int32)
+        self.pairs_0_dict[7]=torch.tensor([[2, 4]], dtype=torch.int32)
+        self.pairs_0_dict[8]=torch.tensor([[2, 5]], dtype=torch.int32)
+        self.pairs_0_dict[9]=torch.tensor([[3, 5]], dtype=torch.int32)
+        self.pairs_0_dict[10]=torch.tensor([[3, 6]], dtype=torch.int32)
+        self.pairs_0_dict[11]=torch.tensor([[3, 6]], dtype=torch.int32)
+
+        self.lengths_trees=[4,5,5,6,6,7,7,7,8,8,8,9]
+
+        # Bias terms
+        if bias:
+            self.bias_2 = nn.Parameter(torch.randn(out_channels))
+            self.bias_3 = nn.Parameter(torch.randn(out_channels))
+        else:
+            self.register_parameter("bias_2", None)
+            self.register_parameter("bias_3", None)
+
+    def forward(self, inputs):
+        x, tree_topologies = inputs  # Unpack tuple
+        # Apply convolution separately on patch size 2
+        outs = []
+        for t_type in range(12):
+            kk_0 = self.kk_0_dict[t_type]
+            # print(kk_0)
+            kk_0 = torch.tensor(kk_0, dtype=torch.int)  # Shape: (num_kk,)
+            # print(out_d.shape)
+            dp_1 = kk_0  # Shape: (num_kk,)
+            length = self.lengths_trees[t_type]
+            dp_2 = length - kk_0  # Shape: (num_kk,)
+            full_filter = torch.zeros(
+                self.filter_2.shape[0],  # Out channels
+                self.filter_2.shape[1],  # In channels
+                length * self.n_span,  # Kernel size
+                device=self.filter_2.device,
+            )
+            #out_d = torch.zeros(
+             #   x.shape[0], self.filter_2.shape[0], self.n - length + 1, device=x.device
+            #)
+
+            # Compute indices for efficient summation
+            dp_1 = kk_0
+            dp_2 = length - kk_0
+
+            # Compute indices for efficient summation
+            dp_1 = kk_0
+            dp_2 = length - kk_0
+            indices = torch.stack(
+                [dp_1 - self.min_split, self.n_span * dp_1 + dp_2 - self.min_split], dim=1
+            ).permute(1,0)  # Shape: (2,num_kk)
+
+            num_filters_2 = indices.shape[1]
+
+            # Replicate full_filter across a new dimension for the filters.
+            stacked_filters_2 = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters_2).clone()
+            # Create filter indices for the last dimension.
+            filter_indices = torch.arange(num_filters_2)
+
+            # Expand filter_2 slices to shape [7,6,num_filters]
+            filter_2_slice0 = self.filter_2[:, :, 0].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters_2)
+            filter_2_slice1 = self.filter_2[:, :, 1].unsqueeze(-1).expand(self.filter_2.size(0), self.filter_2.size(1), num_filters_2)
+
+            # Update the positions specified by indices for each filter.
+            stacked_filters_2[:, :, indices[0, :], filter_indices] = filter_2_slice0/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
+            stacked_filters_2[:, :, indices[1, :], filter_indices] = filter_2_slice1/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
+
+            # Reshape the stacked filters to shape [num_filters_2, 7, 6, 10]
+
+            stacked_filters_2=stacked_filters_2.permute(3,0,1,2)
+
+
+            #out_d+=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)/((full_filter.size(1) * self.filter_2.size(2)) ** 0.5 )
+            
+            #Ternary filters
+
+            pairs_0 = self.pairs_0_dict[length]
+            #pairs_0 = torch.tensor(pairs_0, dtype=torch.int)  # Shape: (num_kk,2)
+            full_filter = torch.zeros(
+                self.filter_3.shape[0],  # Out channels
+                self.filter_3.shape[1],  # In channels
+                length * self.n_span,  # Kernel size
+                device=self.filter_3.device,
+            )
+
+            dp_1 = pairs_0[:, 0]
+            dp_2 = pairs_0[:, 1] - pairs_0[:, 0]
+            dp_3 = length - pairs_0[:, 1]
+
+            indices = torch.stack(
+                [
+                    dp_1 - self.min_split,
+                    self.n_span * dp_1 + dp_2 - self.min_split,
+                    self.n_span * (dp_1 + dp_2) + dp_3 - self.min_split,
+                ],
+                dim=1,
+            ).permute(
+                1, 0
+            )  # Shape: (3,num_kk)
+
+            num_filters_3 = indices.shape[1]
+
+            # Replicate full_filter across a new dimension for the filters.
+            stacked_filters_3 = full_filter.unsqueeze(-1).expand(-1, -1, -1, num_filters_3).clone()
+            # Create filter indices for the last dimension.
+            filter_indices = torch.arange(num_filters_3)
+
+            # Expand filter_2 slices to shape [7,6,num_filters]
+            filter_3_slice0 = self.filter_3[:, :, 0].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
+            filter_3_slice1 = self.filter_3[:, :, 1].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
+            filter_3_slice2 = self.filter_3[:, :, 2].unsqueeze(-1).expand(self.filter_3.shape[0], self.filter_3.shape[1], num_filters_3)
+
+            # Update the positions specified by indices for each filter.
+            stacked_filters_3[:, :, indices[0, :], filter_indices] = filter_3_slice0/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+            stacked_filters_3[:, :, indices[1, :], filter_indices] = filter_3_slice1/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+            stacked_filters_3[:, :, indices[2, :], filter_indices] = filter_3_slice2/((full_filter.size(1) * self.filter_3.size(2)) ** 0.5 )
+
+            # Reshape the stacked filters to shape [num_filters, 7, 6, 10]
+
+            stacked_filters_3=stacked_filters_3.permute(3,0,1,2) # Shape: (num_filters_3, out_channels, in_channels, kernel_size)
+            
+            stacked_filters = torch.cat((stacked_filters_2, stacked_filters_3), dim=0)
+            
+            out_d=manual_conv1d_stacked(x, stacked_filters, stride=self.stride)
+
+            #pad = torch.zeros(
+             #   out_d.shape[0],
+              #  out_d.shape[1],
+               # self.n - out_d.shape[2],
+                #device=out_d.device,
+                #dtype=out_d.dtype,
+            #)
+            #out_d_padded = torch.cat([out_d, pad], dim=2)
+            outs.append(out_d)
+        # Step 1: Stack all elements in outs along a new dimension (dim=3)
+        intermediate = torch.stack(
+            outs, dim=3
+        )  # Shape: (batch_size, out_channels, seq_len, num_spans)
+
+        # Step 2: Reshape to interleave
+        interleaved_out = intermediate.view(
+            intermediate.shape[0], intermediate.shape[1], -1
+        )
+
+        return interleaved_out, tree_topologies  # Return tuple
 
 
 
@@ -3050,6 +3266,31 @@ class hCNN_inside_L_2(nn.Module):
     def forward(self, x):
         x, sum_of_squares = self.hidden(x)
         x = x[torch.arange(x.shape[0]), :, sum_of_squares - self.min_d_last]  # Dynamic indexing
+        x = x @ self.readout / self.norm
+        return x
+
+
+class hCNN_inside_L_2_tree_topologies(nn.Module):
+    def __init__(self, in_channels, nn_dim, out_channels, bias=False, norm="std"):
+        super().__init__()
+
+        self.hidden = nn.Sequential(
+            TensorChopping(),
+            MyConv1d_ell_1(in_channels, nn_dim, bias=bias),
+            TupleReLU(),  # Use custom ReLU that handles tuples
+            MyConv1d_ell_2_last_tree_topologies(nn_dim, nn_dim, bias=bias),
+            TupleReLU(),  # Again, use custom ReLU
+        )
+        self.min_d_last=4
+        self.readout = nn.Parameter(torch.randn(nn_dim, out_channels))
+        if norm == "std":
+            self.norm = nn_dim**0.5  # standard NTK scaling
+        elif norm == "mf":
+            self.norm = nn_dim  # mean-field scaling
+
+    def forward(self, x):
+        x, t_type = self.hidden(x)
+        x = x[torch.arange(x.shape[0]), :, t_type]  # Dynamic indexing
         x = x @ self.readout / self.norm
         return x
 
