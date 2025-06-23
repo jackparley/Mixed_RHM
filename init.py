@@ -96,6 +96,7 @@ def init_data_mixed(args):
             eta=args.eta,
             top_ter=args.top_ter,
             non_overlapping=args.non_overlapping,
+            return_topology=args.return_topology,
             input_format=args.input_format,
             whitening=args.whitening,
         )
