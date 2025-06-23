@@ -1382,7 +1382,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_2 = s_2
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
-        self.return_topology = return_topology
+        print("return_topology", return_topology)
         eta=v/eta
         #eta=eta*v
         self.eta=eta
