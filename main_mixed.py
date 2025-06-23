@@ -286,6 +286,8 @@ parser.add_argument('--check_overlap',default=0, type=int)
 parser.add_argument('--top_ter',default=0, type=int)
 parser.add_argument('--eta_set',default=0, type=int)
 parser.add_argument('--eta',default=8, type=int)
+parser.add_argument('--return_topology', type=int, default=0)
+
 
 '''
 	ARCHITECTURE ARGS
