@@ -1470,6 +1470,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     create_probabilities(m_2, m_3, num_layers),
                     num_features,
                     d_max,
+                    m_2,
                 )
             )
         else:
