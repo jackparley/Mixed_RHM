@@ -1382,6 +1382,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         self.s_2 = s_2
         self.s_3 = s_3
         self.fraction_rules = fraction_rules
+        self.return_topology = return_topology
         eta=v/eta
         #eta=eta*v
         self.eta=eta
@@ -1537,18 +1538,20 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     self.features = torch.cat((self.features, pad_tensor), dim=2)
                 elif num_layers==4:
                     self.features=self.features
-            if return_topology==1:
-                self.features = merge_topologies_into_x(
-                    self.features, torch.tensor(self.tree_topologies)
-                )
-                print("topology merged")
-                print(self.features.shape)
+        
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
 
         else:
             raise ValueError
+        
+        if return_topology==1:
+            self.features = merge_topologies_into_x(
+                self.features, torch.tensor(self.tree_topologies)
+            )
+            print("topology merged")
+            print(self.features.shape)
 
         self.transform = transform
 
