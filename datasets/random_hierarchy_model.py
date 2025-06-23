@@ -1541,6 +1541,8 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                 self.features = merge_topologies_into_x(
                     self.features, torch.tensor(self.tree_topologies)
                 )
+                print("topology merged")
+                print(self.features.shape)
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
