@@ -1618,6 +1618,8 @@ class MixedRandomHierarchyModel(Dataset):
             self.max_data = 2*v*m_2**2*m_3
         elif d_5_single==1:
             self.max_data = v*m_2**2*m_3
+        elif rule_sequence_type==1 and num_layers==3:
+            self.max_data = v * m_2**4 * m_3**4
         else:  
             self.max_data = max_data
         if non_overlapping==0:
