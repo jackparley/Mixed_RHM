@@ -811,6 +811,93 @@ def sample_data_from_labels_varying_tree_tensorized_d_values(
     return result, labels,tree_types
 
 
+def sample_data_from_labels_varying_tree_tensorized_tree_topologies(
+    labels, rules, probability, num_features, d_max,m_2
+):
+    """
+    Create data of the Random Hierarchy Model starting from class labels and a set of rules. Rules are chosen according to probability.
+
+    Args:
+        labels: A tensor of size [batch_size, I], with I from 0 to num_classes-1 containing the class labels of the data to be sampled.
+        rules: A dictionary containing the rules for each level of the hierarchy.
+        probability: A dictionary containing the distribution of the rules for each level of the hierarchy.
+
+    Returns:
+        A tuple containing the inputs and outputs of the model.
+    """
+    L = len(rules)  # Number of levels in the hierarchy
+
+    features = labels
+
+    chosen_rule = torch.multinomial(
+        probability[0], features.numel(), replacement=True
+    ).reshape(
+        features.shape
+    )  # Choose a rule for each variable in the current level according to probability[l]
+    features = rules[0][features, chosen_rule].flatten(
+        start_dim=1
+    )  # Apply the chosen rule to each variable in the current level
+
+    result_tensor_top = torch.where((chosen_rule[:] >= 0) & (chosen_rule[:] < m_2), 0, 1)
+
+    for l in range(1,L):
+        chosen_rule = torch.multinomial(
+            probability[l], features.numel(), replacement=True
+        ).reshape(
+            features.shape
+        )  # Choose a rule for each variable in the current level according to probability[l]
+        features = rules[l][features, chosen_rule].flatten(
+            start_dim=1
+        )  # Apply the chosen rule to each variable in the current level
+        result_tensor_bottom = torch.where((chosen_rule[:] >= 0) & (chosen_rule[:] < m_2), 0, 1)
+    print(result_tensor_bottom.shape)
+    mask = features == num_features
+
+    # Count the number of fake symbols in each row
+    num_fake_symbols = mask.sum(dim=1)
+
+    # Create a tensor to hold the final result
+    result = torch.zeros_like(features)
+    num_data = features.shape[0]  # Number of data points
+    # Remove the fake symbols and keep the original order of the rest of the elements
+    real_features = [features[i, ~mask[i]] for i in range(num_data)]
+    # print(real_features)
+    # Fill the result tensor with real features and append fake symbols at the end
+    tree_topologies=[]
+    for i in range(num_data):
+        num_real_symbols = d_max - num_fake_symbols[i]
+        result[i, :num_real_symbols] = real_features[i]
+        result[i, num_real_symbols:] = num_features
+        if num_real_symbols == 4:
+            tree_topologies.append(0)
+        elif num_real_symbols == 5:
+            if result_tensor_bottom[i,0]==0:
+                tree_topologies.append(1)
+            else:
+                tree_topologies.append(2)
+        elif num_real_symbols == 6:
+            if result_tensor_top[i]==0:
+                tree_topologies.append(3)
+            else:
+                tree_topologies.append(4)   
+        elif num_real_symbols == 7:
+            if result_tensor_bottom[i,0]==1:
+                tree_topologies.append(5)
+            elif result_tensor_bottom[i,1]==1:
+                tree_topologies.append(6) 
+            else:
+                tree_topologies.append(7)
+        elif num_real_symbols == 8:
+            if result_tensor_bottom[i,0]==0:
+                tree_topologies.append(8)
+            elif result_tensor_bottom[i,1]==0:
+                tree_topologies.append(9) 
+            else:
+                tree_topologies.append(10)
+        elif num_real_symbols == 9:
+            tree_topologies.append(11)
+    return result, labels,tree_topologies
+
 def sample_data_from_labels_varying_tree_tensorized(
     labels, rules, probability, num_features, d_max
 ):
@@ -1231,6 +1318,26 @@ def sample_data_from_indices(samples, rules, v, n, m, s, L, bonus):
     return features, labels
 
 
+def merge_topologies_into_x(x, tree_topologies):
+    """
+    Args:
+        x: Tensor of shape (batch_size, num_features, input_length)
+        tree_topologies: Tensor of shape (batch_size,) containing integers [0-11]
+        
+    Returns:
+        merged_x: Tensor of shape (batch_size, num_features, input_length + 1)
+    """
+    batch_size, num_features, _ = x.shape
+    
+    # Reshape and expand tree_topologies to match the shape (batch_size, num_features)
+    topo_expanded = tree_topologies.view(batch_size, 1).expand(-1, num_features)
+    topo_expanded = topo_expanded.unsqueeze(-1)  # (batch_size, num_features, 1)
+
+    # Concatenate along the last dimension
+    merged_x = torch.cat([x, topo_expanded], dim=-1)  # (batch_size, num_features, input_length + 1)
+    return merged_x
+
+
 class MixedRandomHierarchyModel_varying_tree(Dataset):
     """
     Implement the Random Hierarchy Model (RHM) as a PyTorch dataset.
@@ -1256,6 +1363,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         padding_central=0,
         return_type=0,
         non_overlapping=0,
+        return_topology=0,
         top_ter=0,
         input_format="onehot",
         whitening=0,
@@ -1353,6 +1461,16 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             self.features, self.labels, self.tree_types  = sample_data_from_labels_varying_tree_top_ter(
                 labels, self.rules, num_features, d_max
             )
+        elif return_topology==1:
+            self.features, self.labels,self.tree_topologies = (
+                sample_data_from_labels_varying_tree_tensorized_tree_topologies(
+                    labels,
+                    self.rules,
+                    create_probabilities(m_2, m_3, num_layers),
+                    num_features,
+                    d_max,
+                )
+            )
         else:
             self.features, self.labels = (
                 sample_data_from_labels_varying_tree_tensorized(
@@ -1419,6 +1537,10 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                     self.features = torch.cat((self.features, pad_tensor), dim=2)
                 elif num_layers==4:
                     self.features=self.features
+            if return_topology==1:
+                self.features = merge_topologies_into_x(
+                    self.features, torch.tensor(self.tree_topologies)
+                )
 
         elif "long" in input_format:
             self.features = self.features.long() + 1
