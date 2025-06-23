@@ -227,6 +227,15 @@ def init_model_mixed(args):
             norm="mf",  # TODO: add arg for different norm
         )
         args.lr *= args.width  # TODO: modify for different norm
+    elif args.model == "hcnn_inside_L_2_tree_topologies":
+        model = models.hCNN_inside_L_2_tree_topologies(
+            in_channels=args.num_features,
+            nn_dim=args.width,
+            out_channels=args.num_classes,
+            bias=args.bias,
+            norm="mf",  # TODO: add arg for different norm
+        )
+        args.lr *= args.width  # TODO: modify for different norm
     
     elif args.model == "hcnn_inside_L_3":
         model = models.hCNN_inside_L_3(
