@@ -276,6 +276,7 @@ parser.add_argument('--whitening', type=int, default=0)
 parser.add_argument('--padding', type=int, default=0)
 parser.add_argument('--padding_tail', type=int, default=0)
 parser.add_argument('--padding_central', type=int, default=0)
+parser.add_argument('--padding_classification', type=int, default=0)
 parser.add_argument('--return_type', type=int, default=0)
 parser.add_argument('--non_overlapping', type=int, default=0)
 parser.add_argument('--d_5_set', type=int, default=0)
@@ -300,6 +301,8 @@ parser.add_argument('--width_2', type=int, help='width of the top layer')
 parser.add_argument('--bias', default=False, action='store_true')
 parser.add_argument("--seed_model", type=int, help='seed for model initialization')
 parser.add_argument('--mlp_dim', type=int, default=256)
+parser.add_argument('--embedding_dimension', type=int, default=512)
+parser.add_argument('--num_heads', type=int, default=16)
 '''
        TRAINING ARGS
 '''
