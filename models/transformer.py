@@ -128,7 +128,7 @@ class MLA(nn.Module):
         num_heads: Number of attention heads.
         num_layers: Number of encoder layers.
     """
-    def __init__(self, vocab_size, block_size, embedding_dim, num_heads, num_layers):
+    def __init__(self, vocab_size, embedding_dim, num_heads, num_layers):
         super().__init__()
 
         self.vocab_size = vocab_size
