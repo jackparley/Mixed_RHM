@@ -1534,7 +1534,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
                 new_features[:, num_features, 0] = 1.0  # One-hot along the new feature dimension
 
                 # Replace the original features
-                self.features = new_features
+                self.features = new_features.permute(0, 2, 1)  # Shape: (batch_size, input_size, num_features+1) (B,T,C)
 
 
 
