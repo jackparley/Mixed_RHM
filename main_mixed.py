@@ -301,7 +301,7 @@ parser.add_argument('--width_2', type=int, help='width of the top layer')
 parser.add_argument('--bias', default=False, action='store_true')
 parser.add_argument("--seed_model", type=int, help='seed for model initialization')
 parser.add_argument('--mlp_dim', type=int, default=256)
-parser.add_argument('--embedding_dimension', type=int, default=512)
+parser.add_argument('--embedding_dim', type=int, default=512)
 parser.add_argument('--num_heads', type=int, default=16)
 '''
        TRAINING ARGS
