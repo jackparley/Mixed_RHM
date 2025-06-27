@@ -119,6 +119,85 @@ class EncoderBlock(nn.Module):
 
 class MLA(nn.Module):
     """
+    Multi-Layer Attention classifier using EncoderBlocks and first-token readout.
+
+    Args:
+        vocab_size: Size of the vocabulary (including special CLS token).
+        block_size: Maximum number of input tokens (including CLS token).
+        embedding_dim: Embedding dimensionality.
+        num_heads: Number of attention heads.
+        num_layers: Number of encoder layers.
+    """
+    def __init__(self, vocab_size, block_size, embedding_dim, num_heads, num_layers):
+        super().__init__()
+
+        self.vocab_size = vocab_size
+        if num_layers==2:
+            dmax=9
+            block_size=dmax+1
+        self.block_size = block_size
+        self.embedding_dim = embedding_dim
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+
+        # Token embedding: projects one-hot vectors (vocab_size) to embedding_dim
+        self.token_embedding = nn.Parameter(
+            torch.randn(embedding_dim, vocab_size)
+        )
+
+        # Positional embedding: learnable position encodings
+        self.position_embedding = nn.Embedding(block_size, embedding_dim)
+
+        # Transformer encoder stack
+        self.blocks = nn.Sequential(
+            *[
+                EncoderBlock(
+                    embedding_dim=embedding_dim,
+                    num_heads=num_heads
+                ) for _ in range(num_layers)
+            ]
+        )
+
+        # Final readout: from embedding_dim back to vocab_size
+        self.readout = nn.Parameter(
+            torch.randn(vocab_size, embedding_dim)
+        )
+
+    def forward(self, x):
+        """
+        Forward pass.
+
+        Args:
+            x: Input tensor of shape (batch_size, seq_len, vocab_size) — one-hot encoded input
+
+        Returns:
+            Logits of shape (batch_size, vocab_size) from position 0 ([CLS]).
+        """
+        B, T, C = x.size()
+        assert C == self.vocab_size, f"Expected vocab_size={self.vocab_size}, got {C}"
+        assert T <= self.block_size, f"Sequence length {T} exceeds block size {self.block_size}"
+
+        # Project one-hot tokens to embeddings
+        token_emb = F.linear(x, self.token_embedding, bias=None) * C**-0.5  # (B, T, D)
+
+        # Add position embeddings
+        pos_ids = torch.arange(T, device=x.device).unsqueeze(0)  # (1, T)
+        pos_emb = self.position_embedding(pos_ids)  # (1, T, D)
+        x = token_emb + pos_emb  # (B, T, D)
+
+        # Pass through Transformer layers
+        x = self.blocks(x)  # (B, T, D)
+
+        # Read from first position (assumed to be CLS)
+        x_cls = x[:, 0, :]  # (B, D)
+
+        # Project to logits
+        logits = F.linear(x_cls, self.readout, bias=None) * self.readout.size(-1)**-0.5  # (B, vocab_size)
+        return logits
+
+
+class MLA_old(nn.Module):
+    """
     Multi-Layer Multi-Head Attention for last token prediction
 
     Args:
