@@ -1361,6 +1361,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         eta=1,
         padding_tail=0,
         padding_central=0,
+        padding_classification=0,
         return_type=0,
         non_overlapping=0,
         return_topology=0,
@@ -1515,6 +1516,27 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             batch_size, num_features, input_size = self.features.shape
             print("done")
             # print(sum_of_squares)
+
+            if padding_classification: 
+                batch_size, num_features, input_size = self.features.shape
+
+                # New number of features (add one for the dummy token's own one-hot position)
+                new_num_features = num_features + 1
+                new_input_size = input_size + 1
+
+                # Create a zero tensor for the new features with the extra dimensions
+                new_features = torch.zeros(batch_size, new_num_features, new_input_size, device=self.features.device, dtype=self.features.dtype)
+
+                # Copy original features shifted by one position along the input axis
+                new_features[:, :num_features, 1:] = self.features
+
+                # Set the dummy token: for example, use the new index (num_features) in the first timestep (t=0)
+                new_features[:, num_features, 0] = 1.0  # One-hot along the new feature dimension
+
+                # Replace the original features
+                self.features = new_features
+
+
 
             if padding_tail:
                 if num_layers==2:
