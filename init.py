@@ -90,6 +90,7 @@ def init_data_mixed(args):
             test_size=test_size,
             padding_tail=args.padding_tail,
             padding_central=args.padding_central,
+            padding_classification=args.padding_classification,
             return_type=args.return_type,
             d_5_4_set=args.d_5_4_set,
             eta_set=args.eta_set,
@@ -278,6 +279,26 @@ def init_model_mixed(args):
                 norm="mf",  # TODO: add arg for different norm
             )
             args.lr *= args.width  # TODO: modify for different norm
+    elif "transformer" in args.model:
+
+        assert (
+            args.num_heads is not None
+        ), "transformer model requires argument num_heads!"
+        assert (
+            args.embedding_dim is not None
+        ), "transformer model requires argument embedding_dim!"
+
+        if args.model == "transformer_mla":
+
+            model = models.MLA(
+                vocab_size=args.num_features+1,  # +1 for classification token
+                embedding_dim=args.embedding_dim,
+                num_heads=args.num_heads,
+                num_layers=args.depth,
+            )
+
+    else:
+        raise ValueError("model argument is invalid!")
 
     model = model.to(args.device)
 
