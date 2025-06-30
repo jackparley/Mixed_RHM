@@ -135,6 +135,12 @@ class MLA(nn.Module):
         if num_layers==2:
             dmax=9
             block_size=dmax+1
+        elif num_layers==3:
+            dmax=27
+            block_size=dmax+1
+        elif num_layers==4:
+            dmax=81
+            block_size=dmax+1
         self.block_size = block_size
         self.embedding_dim = embedding_dim
         self.num_heads = num_heads
