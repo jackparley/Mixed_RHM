@@ -387,6 +387,86 @@ def sample_data_from_indices_fixed_tree(
     return concatenated_features, labels
 
 
+
+
+def sample_padded_rules_cover_all(v, n, m_2, m_3, s_2, s_3, L, seed):
+    random.seed(seed)
+
+    def tensor_default():
+        return torch.empty(0)
+
+    tuples_2 = list(product(*[range(v) for _ in range(s_2)]))
+    tuples_3 = list(product(*[range(v) for _ in range(s_3)]))
+
+    rules = defaultdict(tensor_default)
+
+    # --- Ensuring symbol coverage for binary rules (when m_2 = 1) ---
+    if m_2 == 1:
+        assert n >= v, "Need at least v rules to cover all symbols"
+
+        uncovered = set(range(v))
+        sampled_bin_rules = []
+
+        # Copy tuples to allow removal
+        available_tuples = tuples_2.copy()
+        random.shuffle(available_tuples)
+
+        for _ in range(n):
+            # Filter for candidates that include at least one uncovered symbol
+            valid_candidates = [pair for pair in available_tuples if (pair[0] in uncovered or pair[1] in uncovered)]
+
+            if not valid_candidates:
+                # All symbols are now covered — fallback to general sampling
+                valid_candidates = available_tuples
+
+            chosen = random.choice(valid_candidates)
+            sampled_bin_rules.append(chosen)
+
+            # Remove one of the used symbols from the uncovered set
+            to_remove = random.choice([sym for sym in chosen if sym in uncovered])
+            uncovered.discard(to_remove)
+
+            # Remove the chosen rule to avoid duplicates
+            available_tuples.remove(chosen)
+
+        binary_rules = torch.tensor(sampled_bin_rules).reshape(n, m_2, s_2)
+    else:
+        # General case
+        binary_rules = torch.tensor(random.sample(tuples_2, n * m_2)).reshape(n, m_2, s_2)
+
+    # Sample ternary rules
+    ternary_rules = torch.tensor(random.sample(tuples_3, n * m_3)).reshape(n, m_3, s_3)
+
+    # Pad binary rules from (n, m_2, 2) to (n, m_2, 3) with fake symbol v
+    padding = torch.full((n, m_2, s_3 - s_2), v)
+    padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+    # Final rule assignment: binary + ternary rules
+    rules[0] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+    for i in range(1, L):
+        binary_rules = torch.tensor(random.sample(tuples_2, v * m_2)).reshape(
+            v, m_2, s_2
+        )
+        ternary_rules = torch.tensor(random.sample(tuples_3, v * m_3)).reshape(
+            v, m_3, s_3
+        )
+
+        # Pad binary rules with the fake symbol (integer v)
+        padding = torch.full((v, m_2, s_3 - s_2), v)
+        padded_binary_rules = torch.cat((binary_rules, padding), dim=2)
+
+        # Stack binary and ternary rules on top of each other
+        rules[i] = torch.cat((padded_binary_rules, ternary_rules), dim=1)
+
+    # Add the fake symbol with rules [v, v, v] at each layer
+    for l in range(L):
+        fake_rules = torch.full((1, m_2 + m_3, 3), v)
+        rules[l] = torch.cat((rules[l], fake_rules), dim=0)
+
+    return rules
+
+
 def sample_padded_rules(v, n, m_2, m_3, s_2, s_3, L, seed):
     random.seed(seed)
 
@@ -1364,6 +1444,7 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
         padding_classification=0,
         return_type=0,
         non_overlapping=0,
+        cover_all=0,
         return_topology=0,
         top_ter=0,
         input_format="onehot",
@@ -1406,6 +1487,10 @@ class MixedRandomHierarchyModel_varying_tree(Dataset):
             )
         elif top_ter==1 and return_type==1:
             self.rules = sample_mixed_rules(
+                num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
+            )
+        elif cover_all==1:
+            self.rules = sample_padded_rules_cover_all(
                 num_features, num_classes, m_2, m_3, s_2, s_3, num_layers, seed_rules
             )
         else:
