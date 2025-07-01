@@ -92,6 +92,7 @@ def init_data_mixed(args):
             padding_central=args.padding_central,
             padding_classification=args.padding_classification,
             return_type=args.return_type,
+            cover_all=args.cover_all,
             d_5_4_set=args.d_5_4_set,
             eta_set=args.eta_set,
             eta=args.eta,
