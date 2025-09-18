@@ -24,6 +24,7 @@ from torch.nn import functional as F
 from sklearn.cluster import KMeans
 
 import argparse
+from scipy.optimize import linear_sum_assignment
 
 
 from functions_MV_inside import (
@@ -57,7 +58,7 @@ seed_rules=0
 n=v
 fac=10000
 num_features = v
-h=1024
+h=512
 
 temperature_train =1  # Temperature for softmax
 temperature_test = 1e-5  # Temperature for softmax
@@ -65,7 +66,7 @@ temperature_test = 1e-5  # Temperature for softmax
 #PP = np.logspace(np.log10(100), np.log10(30000), num=8, dtype=int)
 PP=[30000]
 results = defaultdict(list)
-num_realizations = 10
+num_realizations = 2
 
 
 
@@ -128,6 +129,51 @@ for P in PP:
 
         ws0_ter,kms0_ter= train_ternary_patch(features, labels, assign_T1, fac, h, seed_net, v)
         ws0_bin,kms0_bin= train_binary_patch(features, labels, assign_T2, fac, h, seed_net, v)
+
+
+        centroids_ter = torch.tensor(kms0_ter.cluster_centers_, dtype=torch.float32)  # [v, h]
+        centroids_bin = torch.tensor(kms0_bin.cluster_centers_, dtype=torch.float32)  # [v, h]
+
+
+        directions_ter=(centroids_ter-torch.ones(centroids_ter.shape))*16
+        directions_bin=centroids_bin-torch.ones(centroids_bin.shape)
+
+        def normalize_rows(matrix):
+            return matrix / matrix.norm(dim=1, keepdim=True)
+
+        def find_best_permutation(directions0, directions1):
+            # Normalize to unit vectors
+            norm0 = normalize_rows(directions0)
+            norm1 = normalize_rows(directions1)
+
+            # Cosine similarity matrix [v, v]
+            cosine_matrix = norm0 @ norm1.T
+
+            # Hungarian algorithm wants a *cost* matrix, so take negative similarity
+            cost_matrix = -cosine_matrix.detach().cpu().numpy()
+
+            # Solve assignment problem
+            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+            # col_ind gives, for each row i of centroids0, the best matching row in centroids1
+            permutation = torch.tensor(col_ind, dtype=torch.long)
+
+            return permutation, cosine_matrix[row_ind, col_ind]
+
+        # Example use:
+        try:
+            permutation, sims = find_best_permutation(directions_ter, directions_bin)
+        except ValueError as e:
+            print(f"Error: {e}. Restarting realization.")
+            continue  # Skip to next realization
+
+        print("Best permutation of centroids1 rows:", permutation.tolist())
+        print("Corresponding cosine similarities:", sims.tolist())
+
+        # To reorder centroids1 so it matches centroids0:
+        centroids_bin_aligned = centroids_bin[permutation]
+        kms0_bin.cluster_centers_=centroids_bin_aligned.numpy()
+
 
          # Train top layer
         w_top = train_top_layer(features, labels, assign_T1,assign_T2,
